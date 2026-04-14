@@ -3,9 +3,11 @@ import Header from "../components/Header"
 import CardCatalogo from "../components/CardCatalogo"
 import Carrinho from "../components/Carrinho"
 import ModalPersonalizar from "../components/ModalPersonalizar"
+import { supabase } from "../lib/supabase"
 
 export default function Home() {
     const [produtos, setProdutos] = useState([])
+    const [carregando, setCarregando] = useState(true)
     const [erro, setErro] = useState("")
     const [carrinho, setCarrinho] = useState([])
     const [isCartOpen, setIsCartOpen] = useState(false)
@@ -68,23 +70,32 @@ export default function Home() {
         setCarrinho(carrinho.filter((item) => item.chavePersonalizacao !== chave))
     }
 
-    useEffect(() => {
-        async function buscarDados() {
-            try {
-                const resposta = await fetch("/dados.json")
 
-                if (!resposta.ok) throw new Error("Erro em buscar os dados.")
+    const buscarProdutos = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('produtos')
+                .select('*')
+                .order('id', { ascending: true }) // Mantém a ordem: 300ml, 400ml, 500ml...
 
-                const dados = await resposta.json()
-
-                setProdutos(dados)
-            } catch (error) {
-                setErro(error.message)
+            if (error) {
+                throw error
             }
 
+            // Se deu tudo certo, salva os dados no estado
+            setProdutos(data)
+        } catch (error) {
+            setErro(error.message)
+        } finally {
+            // Tira o aviso de "carregando" da tela, dando erro ou não
+            setCarregando(false)
         }
-        buscarDados()
+    }
+
+    useEffect(() => {
+        buscarProdutos()
     }, [])
+
 
     const [filtroAtivo, setFiltroAtivo] = useState("todos")
 
@@ -107,6 +118,16 @@ export default function Home() {
     const horaAbertura = 19;
     const horaFechamento = 0;
     const lojaAberta = horaAtual >= horaAbertura && horaAtual < horaFechamento;
+
+    if (carregando) {
+        return (
+            <div className="flex justify-center items-center p-10">
+                <p className="text-purple-500 font-bold animate-pulse">
+                    Carregando cardápio...
+                </p>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen bg-bg-primary pb-10">

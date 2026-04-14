@@ -26,7 +26,7 @@ export default function Carrinho({ carrinho, onFechar, onAumentar, onDiminuir, o
     const podeFinalizar = carrinho.length > 0 && nome.trim() && enderecoValido;
 
     // Monta a mensagem e abre o WhatsApp
-    function finalizarPedido() {
+    function finalizarPedido(dadosCliente) {
         if (!podeFinalizar) return;
 
         const enderecoFormatado = `${rua.trim()}, ${numero.trim()} - ${bairro.trim()}` +
@@ -72,6 +72,23 @@ export default function Carrinho({ carrinho, onFechar, onAumentar, onDiminuir, o
             `*Total: ${formatarPreco(subtotal)}*\n\n` +
             `📍 *Endereço de entrega:*\n` +
             `${enderecoFormatado}`;
+
+        // 1. Preparamos o objeto para o Supabase
+        const novoPedido = {
+            cliente_nome: dadosCliente.nome,
+            cliente_endereco: dadosCliente.endereco,
+            total: carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0),
+            itens: carrinho, // O Supabase salva o array como JSONB automaticamente
+            status: 'novo'
+        }
+
+        // 2. Salvamos na tabela 'pedidos'
+        const { data, error } = await supabase
+            .from('pedidos')
+            .insert([novoPedido])
+            .select()
+
+        if (error) throw error
 
         const telefone = "5513997385581"; // Trocar pelo número real
         const url = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
