@@ -1,0 +1,87 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Open Sans", sans-serif;
+
+  /* ========================================
+     PALETA DE CORES DO CATÁLOGO - AÇAÍZERA
+     Para trocar o tema inteiro, basta alterar
+     os valores abaixo.
+     ======================================== */
+
+  /* Fundos (Tema Escuro com tom roxo) */
+  --color-bg-primary: #0c0a14;   /* Preto-roxo profundo */
+  --color-bg-secondary: #150f24; /* Roxo escuríssimo */
+
+  /* Bordas */
+  --color-border: #2a1f3d;       /* Roxo escuro */
+  --color-border-hover: #3d2e5c; /* Roxo médio */
+
+  /* Textos */
+  --color-text-heading: #f5f0ff; /* Branco levemente lilás */
+  --color-text-primary: #e8e0f5; /* Lilás claro */
+  --color-text-input: #d4c8e8;   /* Lilás suave */
+  --color-text-secondary: #a893c4; /* Roxo claro acinzentado */
+  --color-text-subtle: #7a6899;  /* Roxo médio acinzentado */
+  --color-text-muted: #50426b;   /* Roxo escuro acinzentado */
+
+  /* ========================================
+     IDENTIDADE VISUAL DA AÇAÍZERA
+     ======================================== */
+  --color-brand-acai: #6b21a8;     /* Roxo açaí vibrante (purple-700) */
+  --color-brand-deep: #581c87;     /* Roxo intenso (purple-800) */
+  --color-brand-berry: #a855f7;    /* Roxo fruta (purple-500) */
+  --color-brand-guarana: #e879f9;  /* Rosa-lilás claro (fuchsia-400) */
+  --color-brand-granola: #d4a574;  /* Dourado granola */
+  --color-brand-banana: #fbbf24;   /* Amarelo banana */
+  --color-brand-tag: #7c3aed;     /* Roxo badge vibrante (violet-600) */
+
+  /* Cores de Ação baseadas na identidade açaí */
+  --color-accent: #a855f7;         /* Roxo vibrante principal */
+  --color-accent-shadow: rgba(168, 85, 247, 0.35); /* Brilho roxo */
+  --color-accent-hover: #c084fc;   /* Roxo claro no Hover (purple-400) */
+
+  /* Badge e Notificações no Carrinho */
+  --color-badge: var(--color-brand-tag);   /* Roxo badge */
+  --color-badge-alert: #dc2626;            /* Vermelho para erros/avisos */
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    font-family: var(--font-sans);
+  }
+}
+
+/* Animação do painel lateral do Carrinho */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Animação do modal de personalização */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-in {
+  animation: modal-in 0.25s ease-out;
+}

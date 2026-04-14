@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "nome": "Açaí no Copo 300 mL",
+    "descricao": "Monte seu Açaí com 1 Fruta, 2 Acompanhamentos e 1 Calda!",
+    "preco": 19.00,
+    "imagem": "/acai_copo_300.png",
+    "tipo": "açai no copo",
+    "limites": { "frutas": 1, "acompanhamentos": 2, "caldas": 1 }
+  },
+  {
+    "id": 2,
+    "nome": "Açaí no Copo 400 mL",
+    "descricao": "Monte seu Açaí com 1 Fruta, 2 Acompanhamentos e 1 Calda!",
+    "preco": 24.00,
+    "imagem": "/acai_copo_400.png",
+    "tipo": "açai no copo",
+    "limites": { "frutas": 1, "acompanhamentos": 2, "caldas": 1 }
+  },
+  {
+    "id": 3,
+    "nome": "Açaí no Copo 500 mL",
+    "descricao": "Monte seu Açaí com 2 Frutas, 3 Acompanhamentos e 1 Calda!",
+    "preco": 29.00,
+    "imagem": "/acai_copo_500.png",
+    "tipo": "açai no copo",
+    "limites": { "frutas": 2, "acompanhamentos": 3, "caldas": 1 }
+  },
+  {
+    "id": 4,
+    "nome": "Açaí no Copo 770 mL",
+    "descricao": "Monte seu Açaí com 3 Frutas, 4 Acompanhamentos e 2 Caldas!",
+    "preco": 39.00,
+    "imagem": "/acai_copo_770.png",
+    "tipo": "açai no copo",
+    "limites": { "frutas": 3, "acompanhamentos": 4, "caldas": 2 }
+  },
+  {
+    "id": 5,
+    "nome": "Açaí na Garrafa - Mousse de Maracujá",
+    "descricao": "Deliciosa combinação refrescante, perfeita para adoçar seu dia. Experimente essa explosão de sabores! (500 mL)",
+    "preco": 24.90,
+    "imagem": "/acai_garrafa_maracuja.jpeg",
+    "tipo": "açai na garrafa"
+  },
+  {
+    "id": 6,
+    "nome": "Açaí na Garrafa - Paçoca",
+    "descricao": "Açaí cremoso na garrafa com paçoca crocante: a combinação perfeita de doçura e crocância para o seu dia! (500 mL)",
+    "preco": 24.90,
+    "imagem": "/acai_garrafa_pacoca.jpeg",
+    "tipo": "açai na garrafa"
+  },
+  {
+    "id": 7,
+    "nome": "Açaí na Garrafa - Leite Ninho",
+    "descricao": "Delicioso açaí na garrafa com leite Ninho, uma combinação irresistível e nutritiva para te energizar! (500 mL)",
+    "preco": 24.90,
+    "imagem": "/acai_garrafa_ninho.jpeg",
+    "tipo": "açai na garrafa"
+  }
+]
