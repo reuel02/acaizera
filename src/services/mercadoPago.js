@@ -1,5 +1,3 @@
-import { MercadoPagoConfig, Payment } from 'mercadopago';
-
 /**
  * ================================================
  * SERVICE: Mercado Pago PIX
@@ -9,28 +7,19 @@ import { MercadoPagoConfig, Payment } from 'mercadopago';
  * Permite gerar QR Code e receber confirmações via webhook
  *
  * FUNCIONALIDADE:
- *  - Criar pagamento PIX
+ *  - Criar pagamento PIX (via endpoint serverless)
  *  - Gerar QR Code
  *  - Verificar status do pagamento
  *
- * CONFIGURAÇÃO:
- *  - ACCESS_TOKEN: Deve ser configurado no .env
- *  - Webhook: Configurar endpoint no Mercado Pago para receber notificações
- *
- * @requires ACCESS_TOKEN do Mercado Pago
+ * NOTA: Criação de pagamento é feita no servidor (/api/pagamentos)
+ * Verificação é feita no servidor (/api/webhooks/mercadopago)
  * ================================================
  */
 
-// Configuração do Mercado Pago
-const client = new MercadoPagoConfig({
-  accessToken: import.meta.env.VITE_MERCADO_PAGO_ACCESS_TOKEN,
-  options: { timeout: 5000 }
-});
-
-const payment = new Payment(client);
+// Importações não são necessárias aqui (backend only)
 
 /**
- * Cria um pagamento PIX
+ * Cria um pagamento PIX chamando endpoint serverless
  * @param {number} valorTotal - Valor em reais
  * @param {string} descricao - Descrição do pedido
  * @param {string} emailCliente - Email do cliente para receber confirmação
@@ -38,28 +27,29 @@ const payment = new Payment(client);
  */
 export async function criarPagamentoPIX(valorTotal, descricao = 'Pedido Açai', emailCliente) {
   try {
-    const body = {
-      transaction_amount: valorTotal,
-      description: descricao,
-      payment_method_id: 'pix',
-      payer: {
-        email: emailCliente, // Email do cliente para receber confirmação de pagamento
+    // Chamar endpoint serverless na Vercel
+    const response = await fetch('/api/pagamentos', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    };
+      body: JSON.stringify({
+        valor: valorTotal,
+        descricao: descricao,
+        email: emailCliente,
+      }),
+    });
 
-    const requestOptions = {
-      idempotencyKey: `pedido_${Date.now()}`, // Chave única para evitar duplicatas
-    };
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Erro ao criar pagamento PIX');
+    }
 
-    const result = await payment.create({ body, requestOptions });
-
-    return {
-      id: result.id,
-      status: result.status,
-      qrCode: result.point_of_interaction?.transaction_data?.qr_code,
-      qrCodeBase64: result.point_of_interaction?.transaction_data?.qr_code_base64,
-      copiaCola: result.point_of_interaction?.transaction_data?.qr_code,
-    };
+    const dados = await response.json();
+    
+    console.log('✅ Pagamento PIX criado:', dados.id);
+    
+    return dados;
   } catch (error) {
     console.error('Erro ao criar pagamento PIX:', error);
     throw error;
@@ -67,14 +57,27 @@ export async function criarPagamentoPIX(valorTotal, descricao = 'Pedido Açai', 
 }
 
 /**
- * Verifica o status de um pagamento
+ * Verifica o status de um pagamento chamando endpoint serverless
  * @param {string} paymentId - ID do pagamento
  * @returns {Promise<string>} Status do pagamento
  */
 export async function verificarStatusPagamento(paymentId) {
   try {
-    const result = await payment.get({ id: paymentId });
-    return result.status;
+    const response = await fetch(`/api/pagamentos/${paymentId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Erro ao verificar status do pagamento');
+    }
+
+    const dados = await response.json();
+    console.log('✅ Status verificado:', dados.status);
+    return dados.status;
   } catch (error) {
     console.error('Erro ao verificar status:', error);
     throw error;
