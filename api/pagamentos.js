@@ -57,7 +57,9 @@ export default async function handler(req, res) {
       description: descricao,
       payment_method_id: "pix",
       payer: {
-        email: email,
+        "email": "TESTUSER3225263623883826027",
+        "first_name": "João",
+        "last_name": "Teste"
       },
     };
 
