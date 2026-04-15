@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FaTrash, FaPlus, FaMinus, FaTimes, FaMapMarkerAlt, FaUser } from "react-icons/fa";
 import { FaWhatsapp } from "react-icons/fa";
 import { supabase } from "../lib/supabase";
+import { MdEmail } from "react-icons/md";
 
 /**
  * ================================================
@@ -63,6 +64,7 @@ import { supabase } from "../lib/supabase";
 export default function Carrinho({ carrinho, onFechar, onAumentar, onDiminuir, onRemover, onExibirPagamento, onDadosPedidoSalvo }) {
   // ===== ESTADOS DE FORMULÁRIO =====
   const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
   const [rua, setRua] = useState("");
   const [numero, setNumero] = useState("");
   const [bairro, setBairro] = useState("");
@@ -89,8 +91,11 @@ export default function Carrinho({ carrinho, onFechar, onAumentar, onDiminuir, o
   // Endereço é válido se rua, número e bairro estão preenchidos (não vazios)
   const enderecoValido = rua.trim() && numero.trim() && bairro.trim();
   
-  // Pode finalizar se: carrinho tem items, nome foi digitado e endereço completo
-  const podeFinalizar = carrinho.length > 0 && nome.trim() && enderecoValido;
+  // Email é válido se tem @ (validação simples)
+  const emailValido = email.trim().includes('@');
+  
+  // Pode finalizar se: carrinho tem items, nome foi digitado, email válido e endereço completo
+  const podeFinalizar = carrinho.length > 0 && nome.trim() && emailValido && enderecoValido;
 
   /**
    * Finaliza o pedido:
@@ -154,25 +159,21 @@ export default function Carrinho({ carrinho, onFechar, onAumentar, onDiminuir, o
         `📍 *Endereço de entrega:*\n` +
         `${enderecoFormatado}`;
 
-      // Prepara objeto para salvar no Supabase
+      // Prepara objeto para salvar no Supabase (mas não salva ainda)
       // ⚠️ IMPORTANTE: Inclui criado_em para manter histórico de pedidos por data
       const novoPedido = {
         cliente_nome: nome,
         cliente_endereco: enderecoFormatado,
+        cliente_email: email,
         total: subtotal,
         itens: carrinho, // Supabase salva como JSONB automaticamente
         status: 'novo',
         criado_em: new Date().toISOString() // Timestamp: essencial para filtro de data no admin
       };
 
-      // INSERT no Supabase tabela 'pedidos'
-      const { error } = await supabase
-        .from('pedidos')
-        .insert([novoPedido]);
+      // NÃO SALVA MAIS AQUI - será salvo após confirmação de pagamento
 
-      if (error) throw error;
-
-      // Chama callback com dados salvos + mensagem
+      // Chama callback com dados preparados + mensagem
       onDadosPedidoSalvo({ ...novoPedido, subtotal, mensagem });
 
       // Exibe modal de pagamento PIX
@@ -328,6 +329,22 @@ export default function Carrinho({ carrinho, onFechar, onAumentar, onDiminuir, o
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Digite seu nome..."
+              className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-text-heading text-sm placeholder:text-text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+            />
+          </div>
+
+          {/* ===== CAMPO: EMAIL DO CLIENTE ===== */}
+          <div className="flex flex-col gap-2">
+            <label htmlFor="email" className="text-text-secondary font-semibold text-sm flex items-center gap-2">
+              <MdEmail className="text-accent" />
+              Seu email
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="seu.email@exemplo.com"
               className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-text-heading text-sm placeholder:text-text-muted/50 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
             />
           </div>

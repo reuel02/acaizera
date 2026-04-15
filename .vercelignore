@@ -1,0 +1,11 @@
+node_modules
+.git
+.env.example
+README.md
+WEBHOOK_SETUP.md
+WEBHOOK_QUICK_START.md
+deploy.sh
+.gitignore
+.eslintrc.cjs
+.env
+*.md

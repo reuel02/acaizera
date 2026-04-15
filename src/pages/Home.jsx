@@ -193,6 +193,38 @@ export default function Home({ acessarAdmin }) {
   };
 
   /**
+   * Confirma o pagamento e salva o pedido no banco
+   * @param {string} paymentId - ID do pagamento Mercado Pago (enviado pelo webhook)
+   */
+  const confirmarPagamento = async (paymentId) => {
+    if (!dadosPedidoSalvo) return;
+
+    try {
+      // Salva o pedido no Supabase após confirmação de pagamento
+      const { error } = await supabase
+        .from('pedidos')
+        .insert([{
+          cliente_nome: dadosPedidoSalvo.cliente_nome,
+          cliente_endereco: dadosPedidoSalvo.cliente_endereco,
+          cliente_email: dadosPedidoSalvo.cliente_email,
+          total: dadosPedidoSalvo.total,
+          itens: dadosPedidoSalvo.itens,
+          payment_id: paymentId,
+          status: 'novo',
+          criado_em: dadosPedidoSalvo.criado_em
+        }]);
+
+      if (error) throw error;
+
+      // Agora envia pro WhatsApp
+      concluirEIrParaWhatsApp();
+    } catch (error) {
+      alert("Erro ao confirmar pagamento. Tente novamente.");
+      console.error(error);
+    }
+  };
+
+  /**
    * Finaliza o pedido: abre WhatsApp e limpa carrinho
    * 
    * TODO: Usar a mensagem gerada no Carrinho.jsx para enviar ao WhatsApp real
@@ -359,7 +391,8 @@ export default function Home({ acessarAdmin }) {
       {exibirPagamento && dadosPedidoSalvo && (
         <Pagamento 
           valorTotal={dadosPedidoSalvo.subtotal}
-          onPagamentoFeito={concluirEIrParaWhatsApp}
+          emailCliente={dadosPedidoSalvo.cliente_email}
+          onPagamentoFeito={confirmarPagamento}
           onCancelar={() => setExibirPagamento(false)}
         />  
       )}

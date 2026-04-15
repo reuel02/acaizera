@@ -1,76 +1,102 @@
 import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { gerarPayloadPix } from '../services/gerarPix';
+import { criarPagamentoPIX, verificarStatusPagamento } from '../services/mercadoPago';
 
 /**
  * ================================================
  * COMPONENTE: Pagamento (Modal)
  * ================================================
  * 
- * Modal para exibir QR Code de PIX e confirmar pagamento
+ * Modal para exibir QR Code de PIX via Mercado Pago e confirmar pagamento
  * 
  * FUNCIONALIDADE:
- *  - Gera QR Code PIX baseado no valor total
+ *  - Cria pagamento PIX via Mercado Pago
  *  - Exibe código visual (QR Code SVG)
  *  - Funcionalidade "Copiar Copia e Cola" com feedback visual
- *  - Botão para confirmar pagamento recebido
+ *  - Verifica status do pagamento antes de confirmar
  *  - Botão para cancelar operação
  * 
  * PROPS:
  *  - valorTotal: number - Valor total em reais para o PIX
- *  - onPagamentoFeito: () => void - Callback ao confirmar pagamento (enviar pedido)
+ *  - emailCliente: string - Email do cliente
+ *  - onPagamentoFeito: (paymentId) => void - Callback ao confirmar pagamento (recebe payment_id)
  *  - onCancelar: () => void - Callback ao cancelar (voltar no carrinho)
  * 
  * ESTADOS:
- *  - codigoPix: string - Código PIX completo (payload)
+ *  - dadosPagamento: object - Dados do pagamento PIX do Mercado Pago
  *  - copiado: boolean - Flag visual para feedback de cópia
+ *  - statusPagamento: string - Status atual do pagamento
+ *  - verificado: boolean - Se já tentou verificar o pagamento
  * 
- * DADOS HARDCODED (⚠️ MELHORAR):
- *  - Chave PIX, Nome, Cidade estão hardcoded
- *  - TODO: Mover para variáveis de ambiente (.env)
- *  - TODO: Implementar validação de dados antes de gerar QR
- * 
- * SEGURANÇA:
- *  - ⚠️ Chave PIX exposta no frontend (transferir para backend)
- *  - 🔐 Future: Implementar geração de QR no servidor
+ * DEPENDÊNCIAS:
+ *  - Mercado Pago SDK configurado com ACCESS_TOKEN
+ *  - Webhook configurado no Mercado Pago (opcional para notificações automáticas)
  * ================================================
  */
 
-export function Pagamento({ valorTotal, onPagamentoFeito, onCancelar }) {
-  // Estado para armazenar o código PIX gerado
-  const [codigoPix, setCodigoPix] = useState('');
+export function Pagamento({ valorTotal, emailCliente, onPagamentoFeito, onCancelar }) {
+  // Estado para armazenar os dados do pagamento PIX
+  const [dadosPagamento, setDadosPagamento] = useState(null);
   
-  // Flag para mostrar feedback de "Copiado!" temporariamente
+  // Flag para mostrar feedback de cópia
   const [copiado, setCopiado] = useState(false);
 
+  // Estado para verificar status do pagamento
+  const [statusPagamento, setStatusPagamento] = useState('pending');
+  const [verificado, setVerificado] = useState(false);
+
   /**
-   * useEffect: Gera QR Code PIX quando componente monta ou valorTotal muda
-   * WARNING: Dados estão hardcoded. Considere mover para env vars
+   * useEffect: Cria pagamento PIX quando componente monta ou valorTotal muda
    */
   useEffect(() => {
-    // IMPORTANTE: Coloque os dados reais da conta do seu amigo aqui (sem acentos)
-    const chave = "54614797822"; 
-    const nome = "Reuel dos Santos Ferreia Andrade"; 
-    const cidade = "Santos"; 
+    const criarPagamento = async () => {
+      try {
+        const dados = await criarPagamentoPIX(valorTotal, 'Pedido de Açaí', emailCliente);
+        setDadosPagamento(dados);
+      } catch (error) {
+        console.error('Erro ao criar pagamento PIX:', error);
+        alert('Erro ao gerar QR Code PIX. Tente novamente.');
+      }
+    };
 
-    // Gera payload PIX com os dados e valor
-    const payload = gerarPayloadPix(chave, nome, cidade, valorTotal);
-    setCodigoPix(payload);
-  }, [valorTotal]);
+    if (valorTotal > 0) {
+      criarPagamento();
+    }
+  }, [valorTotal, emailCliente]);
 
   /**
    * Copia o código PIX para clipboard e mostra feedback visual
-   * Após 3 segundos, volta ao estado normal
    */
   const copiarPix = () => {
-    // Copia o código para a área de transferência
-    navigator.clipboard.writeText(codigoPix);
+    if (!dadosPagamento?.copiaCola) return;
     
-    // Mostra visual de sucesso
+    navigator.clipboard.writeText(dadosPagamento.copiaCola);
+    
     setCopiado(true);
-    
-    // Remove visual após 3 segundos
     setTimeout(() => setCopiado(false), 3000);
+  };
+
+  /**
+   * Verifica o status do pagamento no Mercado Pago
+   */
+  const verificarPagamento = async () => {
+    if (!dadosPagamento?.id) return;
+
+    try {
+      const status = await verificarStatusPagamento(dadosPagamento.id);
+      setStatusPagamento(status);
+      setVerificado(true);
+
+      if (status === 'approved') {
+        // Pagamento confirmado, passa o payment_id para o callback
+        onPagamentoFeito(dadosPagamento.id);
+      } else {
+        alert('Pagamento ainda não foi confirmado. Aguarde alguns instantes e tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro ao verificar pagamento:', error);
+      alert('Erro ao verificar pagamento. Tente novamente.');
+    }
   };
 
   return (
@@ -89,10 +115,10 @@ export function Pagamento({ valorTotal, onPagamentoFeito, onCancelar }) {
         {/* ===== SEÇÃO: QR CODE ===== */}
         {/* Container branco para destacar o QR Code */}
         <div className="flex justify-center mb-6 p-4 bg-white rounded-xl mx-auto w-fit">
-          {/* QRCodeSVG só renderiza se houver payload válido (string não vazia) */}
-          {typeof codigoPix === 'string' && codigoPix.length > 0 && (
+          {/* QRCodeSVG só renderiza se houver dados de pagamento válidos */}
+          {dadosPagamento?.qrCode && (
             <QRCodeSVG 
-              value={codigoPix} 
+              value={dadosPagamento.qrCode} 
               size={200} 
               level="M"
               includeMargin={true}
@@ -129,12 +155,13 @@ export function Pagamento({ valorTotal, onPagamentoFeito, onCancelar }) {
             Voltar
           </button>
           
-          {/* Botão Confirmar: marca pedido como pago e finaliza compra */}
+          {/* Botão Confirmar: verifica status do pagamento antes de enviar */}
           <button 
-            onClick={onPagamentoFeito}
-            className="w-2/3 py-3 rounded-xl font-bold bg-purple-600 text-white"
+            onClick={verificarPagamento}
+            disabled={!dadosPagamento}
+            className="w-2/3 py-3 rounded-xl font-bold bg-purple-600 text-white disabled:bg-gray-600"
           >
-            Já Paguei → Enviar
+            {verificado ? 'Verificando...' : 'Já Paguei → Verificar'}
           </button>
         </div>
       </div>
