@@ -15,7 +15,7 @@
  * ================================================
  */
 
-const { createClient } = require("@supabase/supabase-js");
+import { createClient } from "@supabase/supabase-js";
 
 // Inicializar Supabase
 const supabase = createClient(

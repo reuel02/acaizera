@@ -12,7 +12,7 @@
  * ================================================
  */
 
-const { MercadoPagoConfig, Payment } = require("mercadopago");
+import { MercadoPagoConfig, Payment } from "mercadopago";
 
 // Inicializar Mercado Pago com access token
 const client = new MercadoPagoConfig({

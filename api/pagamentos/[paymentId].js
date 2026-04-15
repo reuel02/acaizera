@@ -9,7 +9,7 @@
  * ================================================
  */
 
-const { MercadoPagoConfig, Payment } = require("mercadopago");
+import { MercadoPagoConfig, Payment } from "mercadopago";
 
 // Inicializar Mercado Pago
 const client = new MercadoPagoConfig({
