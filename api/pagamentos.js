@@ -58,8 +58,6 @@ export default async function handler(req, res) {
       payment_method_id: "pix",
       payer: {
         email: email,
-        first_name: "APRO", 
-        last_name: "Teste"
       },
     };
 

@@ -41,8 +41,6 @@ export async function criarPagamentoPIX(
         valor: valorTotal,
         descricao: descricao,
         email: emailCliente,
-        first_name: "APRO", 
-        last_name: "Teste"
       }),
     });
 
