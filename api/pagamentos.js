@@ -40,6 +40,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Valor deve ser maior que 0" });
     }
 
+    // Debug: Verificar se token existe
+    if (!process.env.VITE_MERCADO_PAGO_ACCESS_TOKEN) {
+      console.error("❌ VITE_MERCADO_PAGO_ACCESS_TOKEN não configurado!");
+      return res.status(500).json({
+        error: "Erro ao criar pagamento PIX",
+        message: "Token do Mercado Pago não configurado",
+      });
+    }
+
     console.log(`💳 Criando pagamento PIX: R$ ${valor} para ${email}`);
 
     // Criar pagamento no Mercado Pago
@@ -56,26 +65,41 @@ export default async function handler(req, res) {
       idempotencyKey: `pedido_${Date.now()}_${Math.random()}`,
     };
 
+    console.log("📤 Enviando requisição ao Mercado Pago...", {
+      body,
+      requestOptions,
+    });
+
     const result = await payment.create({ body, requestOptions });
 
-    console.log(`✅ Pagamento criado com sucesso: ID ${result.id}`);
+    console.log(`✅ Pagamento criado com sucesso: ID ${result.id}`, result);
 
     // Retornar dados do QR Code
-    return res.status(200).json({
+    const response = {
       id: result.id,
       status: result.status,
       qrCode: result.point_of_interaction?.transaction_data?.qr_code,
       qrCodeBase64:
         result.point_of_interaction?.transaction_data?.qr_code_base64,
       copiaCola: result.point_of_interaction?.transaction_data?.qr_code,
-    });
+    };
+
+    console.log("✅ Resposta preparada:", response);
+    return res.status(200).json(response);
   } catch (error) {
     console.error("❌ Erro ao criar pagamento:", error);
+    console.error("Erro completo:", {
+      name: error.name,
+      message: error.message,
+      status: error.status,
+      cause: error.cause,
+    });
 
     // Retornar erro com mais detalhes
     return res.status(500).json({
       error: "Erro ao criar pagamento PIX",
-      message: error.message,
+      message: error.message || "Erro desconhecido",
+      type: error.name,
     });
   }
 }
