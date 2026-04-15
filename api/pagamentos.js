@@ -41,8 +41,8 @@ export default async function handler(req, res) {
     }
 
     // Debug: Verificar se token existe
-    if (!process.env.VITE_MERCADO_PAGO_ACCESS_TOKEN) {
-      console.error("❌ VITE_MERCADO_PAGO_ACCESS_TOKEN não configurado!");
+    if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+      console.error("❌ MERCADO_PAGO_ACCESS_TOKEN não configurado!");
       return res.status(500).json({
         error: "Erro ao criar pagamento PIX",
         message: "Token do Mercado Pago não configurado",
@@ -57,9 +57,7 @@ export default async function handler(req, res) {
       description: descricao,
       payment_method_id: "pix",
       payer: {
-        "email": "TESTUSER3225263623883826027",
-        "first_name": "João",
-        "last_name": "Teste"
+        email: email,
       },
     };
 
