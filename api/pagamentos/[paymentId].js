@@ -32,12 +32,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Payment ID é obrigatório" });
     }
 
+    // Debug: Verificar token
+    if (!process.env.VITE_MERCADO_PAGO_ACCESS_TOKEN) {
+      console.error("❌ VITE_MERCADO_PAGO_ACCESS_TOKEN não configurado!");
+      return res.status(500).json({
+        error: "Erro ao verificar status",
+        message: "Token do Mercado Pago não configurado"
+      });
+    }
+
     console.log(`🔍 Verificando status do pagamento: ${paymentId}`);
 
     // Buscar status do pagamento no Mercado Pago
     const result = await payment.get({ id: paymentId });
 
-    console.log(`✅ Status do pagamento ${paymentId}: ${result.status}`);
+    console.log(`✅ Status do pagamento ${paymentId}: ${result.status}`, result);
 
     return res.status(200).json({
       id: result.id,
@@ -47,10 +56,17 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("❌ Erro ao verificar status:", error);
+    console.error("Erro completo:", {
+      name: error.name,
+      message: error.message,
+      status: error.status,
+      cause: error.cause,
+    });
 
     return res.status(500).json({
       error: "Erro ao verificar status do pagamento",
-      message: error.message,
+      message: error.message || "Erro desconhecido",
+      type: error.name,
     });
   }
 }

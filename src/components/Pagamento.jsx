@@ -83,7 +83,9 @@ export function Pagamento({ valorTotal, emailCliente, onPagamentoFeito, onCancel
     if (!dadosPagamento?.id) return;
 
     try {
+      console.log(`🔍 Verificando pagamento: ${dadosPagamento.id}`);
       const status = await verificarStatusPagamento(dadosPagamento.id);
+      console.log(`✅ Status retornado: ${status}`);
       setStatusPagamento(status);
       setVerificado(true);
 
@@ -94,8 +96,13 @@ export function Pagamento({ valorTotal, emailCliente, onPagamentoFeito, onCancel
         alert('Pagamento ainda não foi confirmado. Aguarde alguns instantes e tente novamente.');
       }
     } catch (error) {
-      console.error('Erro ao verificar pagamento:', error);
-      alert('Erro ao verificar pagamento. Tente novamente.');
+      console.error('❌ Erro ao verificar pagamento:', error);
+      console.error('Detalhes do erro:', {
+        message: error.message,
+        status: error.status,
+        cause: error.cause,
+      });
+      alert(`Erro ao verificar pagamento: ${error.message}`);
     }
   };
 
