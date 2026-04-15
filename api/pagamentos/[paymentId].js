@@ -22,31 +22,41 @@ const payment = new Payment(client);
 export default async function handler(req, res) {
   // Apenas GET é aceito
   if (req.method !== "GET") {
+    console.log(`❌ Método não permitido: ${req.method}`);
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     const { paymentId } = req.query;
 
+    console.log(`📥 Requisição recebida:`, {
+      method: req.method,
+      paymentId,
+      query: req.query,
+    });
+
     if (!paymentId) {
+      console.error("❌ Payment ID não fornecido!");
       return res.status(400).json({ error: "Payment ID é obrigatório" });
     }
 
     // Debug: Verificar token
-    if (!process.env.VITE_MERCADO_PAGO_ACCESS_TOKEN) {
+    const token = process.env.VITE_MERCADO_PAGO_ACCESS_TOKEN;
+    if (!token) {
       console.error("❌ VITE_MERCADO_PAGO_ACCESS_TOKEN não configurado!");
       return res.status(500).json({
         error: "Erro ao verificar status",
-        message: "Token do Mercado Pago não configurado"
+        message: "Token do Mercado Pago não configurado",
       });
     }
 
-    console.log(`🔍 Verificando status do pagamento: ${paymentId}`);
+    console.log(`✅ Token configurado: ${token.substring(0, 20)}...`);
+    console.log(`🔍 Buscando pagamento ${paymentId} no Mercado Pago...`);
 
     // Buscar status do pagamento no Mercado Pago
     const result = await payment.get({ id: paymentId });
 
-    console.log(`✅ Status do pagamento ${paymentId}: ${result.status}`, result);
+    console.log(`✅ Pagamento encontrado! Status: ${result.status}`);
 
     return res.status(200).json({
       id: result.id,
@@ -55,7 +65,8 @@ export default async function handler(req, res) {
       date_created: result.date_created,
     });
   } catch (error) {
-    console.error("❌ Erro ao verificar status:", error);
+    console.error("❌ ERRO AO VERIFICAR PAGAMENTO:", error.message);
+    console.error("Stack:", error.stack);
     console.error("Erro completo:", {
       name: error.name,
       message: error.message,
