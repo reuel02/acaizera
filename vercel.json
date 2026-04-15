@@ -1,11 +1,6 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "env": {
-    "VITE_SUPABASE_URL": "@vite_supabase_url",
-    "VITE_SUPABASE_ANON_KEY": "@vite_supabase_anon_key",
-    "VITE_MERCADO_PAGO_ACCESS_TOKEN": "@vite_mercado_pago_access_token"
-  },
   "functions": {
     "api/**/*.js": {
       "memory": 1024,
