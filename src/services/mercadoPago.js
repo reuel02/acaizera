@@ -25,13 +25,17 @@
  * @param {string} emailCliente - Email do cliente para receber confirmação
  * @returns {Promise<Object>} Dados do pagamento PIX
  */
-export async function criarPagamentoPIX(valorTotal, descricao = 'Pedido Açai', emailCliente) {
+export async function criarPagamentoPIX(
+  valorTotal,
+  descricao = "Pedido Açai",
+  emailCliente,
+) {
   try {
     // Chamar endpoint serverless na Vercel
-    const response = await fetch('/api/pagamentos', {
-      method: 'POST',
+    const response = await fetch("/api/pagamentos", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         valor: valorTotal,
@@ -42,16 +46,16 @@ export async function criarPagamentoPIX(valorTotal, descricao = 'Pedido Açai', 
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || 'Erro ao criar pagamento PIX');
+      throw new Error(errorData.message || "Erro ao criar pagamento PIX");
     }
 
     const dados = await response.json();
-    
-    console.log('✅ Pagamento PIX criado:', dados.id);
-    
+
+    console.log("✅ Pagamento PIX criado:", dados.id);
+
     return dados;
   } catch (error) {
-    console.error('Erro ao criar pagamento PIX:', error);
+    console.error("Erro ao criar pagamento PIX:", error);
     throw error;
   }
 }
@@ -63,23 +67,25 @@ export async function criarPagamentoPIX(valorTotal, descricao = 'Pedido Açai', 
  */
 export async function verificarStatusPagamento(paymentId) {
   try {
-    const response = await fetch(`/api/pagamentos/${paymentId}`, {
-      method: 'GET',
+    const response = await fetch(`/api/status?id=${paymentId}`, {
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || 'Erro ao verificar status do pagamento');
+      throw new Error(
+        errorData.message || "Erro ao verificar status do pagamento",
+      );
     }
 
     const dados = await response.json();
-    console.log('✅ Status verificado:', dados.status);
+    console.log("✅ Status verificado:", dados.status);
     return dados.status;
   } catch (error) {
-    console.error('Erro ao verificar status:', error);
+    console.error("Erro ao verificar status:", error);
     throw error;
   }
 }
