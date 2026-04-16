@@ -42,7 +42,6 @@ export function Pagamento({ valorTotal, emailCliente, onPagamentoFeito, onCancel
   const [copiado, setCopiado] = useState(false);
 
   // Estado para verificar status do pagamento
-  const [statusPagamento, setStatusPagamento] = useState('pending');
   const [verificado, setVerificado] = useState(false);
 
   /**
@@ -86,7 +85,6 @@ export function Pagamento({ valorTotal, emailCliente, onPagamentoFeito, onCancel
       console.log(`🔍 Verificando pagamento: ${dadosPagamento.id}`);
       const status = await verificarStatusPagamento(dadosPagamento.id);
       console.log(`✅ Status retornado: ${status}`);
-      setStatusPagamento(status);
       setVerificado(true);
 
       if (status === 'approved') {

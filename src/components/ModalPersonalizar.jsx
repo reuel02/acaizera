@@ -88,6 +88,106 @@ const TURBINE = [
  * ================================================
  */
 
+/**
+ * Formata número como moeda brasileira (R$ X,XX)
+ * Usa Intl.NumberFormat para respeitar localização
+ */
+function formatarPreco(valor) {
+  return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+  }).format(valor);
+}
+
+/**
+ * Toggle genérico para frutas/acompanhamentos/caldas com limite
+ */
+function toggleItem(item, lista, setLista, limite) {
+  const existe = lista.find((i) => i.id === item.id);
+
+  if (item.id === "f0" || item.id === "cl0") {
+      if (existe) {
+          setLista([]);
+      } else {
+          setLista([item]);
+      }
+      return;
+  }
+
+  const listaSemVazio = lista.filter((i) => i.id !== "f0" && i.id !== "cl0");
+
+  if (existe) {
+      setLista(listaSemVazio.filter((i) => i.id !== item.id));
+  } else if (listaSemVazio.length < limite) {
+      setLista([...listaSemVazio, item]);
+  }
+}
+
+/**
+ * Componente reutilizável para seção de seleção
+ */
+function SecaoSelecao({ titulo, icone, itens, selecionados, setSelecionados, limite, temPreco }) {
+  const countSelecionados = selecionados.filter((i) => i.id !== "f0" && i.id !== "cl0").length;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-text-heading font-bold text-sm flex items-center gap-2">
+          {icone} {titulo}
+        </h3>
+        {limite > 0 && (
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+            countSelecionados >= limite
+              ? "bg-accent/20 text-accent"
+              : "bg-border text-text-secondary"
+          }`}>
+            {countSelecionados}/{limite}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        {itens.map((item) => {
+          const selecionado = selecionados.some((s) => s.id === item.id);
+          const atingiuLimite = countSelecionados >= limite && !selecionado && item.id !== "f0" && item.id !== "cl0";
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => toggleItem(item, selecionados, setSelecionados, limite)}
+              disabled={atingiuLimite}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm transition-all cursor-pointer ${
+                selecionado
+                  ? "border-accent/50 bg-accent/10 text-text-heading"
+                  : atingiuLimite
+                    ? "border-border bg-bg-primary text-text-muted cursor-not-allowed opacity-50"
+                    : "border-border bg-bg-primary text-text-secondary hover:border-border-hover"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`w-5 h-5 rounded flex items-center justify-center text-xs border ${
+                  selecionado
+                    ? "bg-accent border-accent text-white"
+                    : "border-border-hover"
+                }`}>
+                  {selecionado && <FaCheck className="size-2.5" />}
+                </span>
+                {item.nome}
+              </div>
+              <span className="text-text-subtle text-xs">
+                {temPreco && item.preco > 0
+                  ? `+ ${formatarPreco(item.preco)}`
+                  : "R$ 0,00"
+                }
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function ModalPersonalizar({ produto, onConfirmar, onFechar }) {
   // ===== ESTADOS DE SELEÇÃO =====
   const [quantidade, setQuantidade] = useState(1);
@@ -115,59 +215,7 @@ export default function ModalPersonalizar({ produto, onConfirmar, onFechar }) {
   // Preço total = (preço base + extras) * quantidade
   const precoTotalItem = precoUnitarioFinal * quantidade;
 
-  /**
-   * Formata número como moeda brasileira (R$ X,XX)
-   * Usa Intl.NumberFormat para respeitar localização
-   */
-  function formatarPreco(valor) {
-    return new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-    }).format(valor);
-  }
 
-  /**
-   * Toggle genérico para frutas/acompanhamentos/caldas com limite
-   * 
-   * LÓGICA:
-   * 1. Se item é "Sem Frutas"/"Sem Caldas": clica = limpa lista ou seleciona só esse
-   * 2. Se item já existe: remove da lista
-   * 3. Se item é novo e tem espaço (< limite): adiciona à lista
-   * 4. Remove "Sem Frutas"/"Sem Caldas" automaticamente ao adicionar outro item
-   * 
-   * @param item - Item a adicionar/remover
-   * @param lista - Array de items atuais
-   * @param setLista - Setter do estado
-   * @param limite - Máximo de items permitidos (ex: 3 frutas max)
-   */
-  function toggleItem(item, lista, setLista, limite) {
-    const existe = lista.find((i) => i.id === item.id);
-
-    // CASO 1: Clicou em "Sem Frutas" ou "Sem Caldas" — limpa tudo ou seleciona só esse
-    if (item.id === "f0" || item.id === "cl0") {
-        if (existe) {
-            // Se já estava selecionado, remove
-            setLista([]);
-        } else {
-            // Se não estava, limpa e seleciona só esse
-            setLista([item]);
-        }
-        return;
-    }
-
-    // CASO 2: Remove "Sem Frutas"/"Sem Caldas" se estiver na lista
-    // (pois agora o usuário está adicionando um item específico)
-    const listaSemVazio = lista.filter((i) => i.id !== "f0" && i.id !== "cl0");
-
-    if (existe) {
-        // Item já selecionado: remove
-        setLista(listaSemVazio.filter((i) => i.id !== item.id));
-    } else if (listaSemVazio.length < limite) {
-        // Item novo e espaço disponível: adiciona
-        setLista([...listaSemVazio, item]);
-    }
-    // Se atingiu limite: não faz nada (botão está disabled visualmente)
-  }
 
   /**
    * Toggle para turbine (extras premium)
@@ -206,88 +254,7 @@ export default function ModalPersonalizar({ produto, onConfirmar, onFechar }) {
     });
   }
 
-  /**
-   * Componente reutilizável para seção de seleção
-   * Renderiza título, limite, e lista de botões com checkboxes
-   * 
-   * @param titulo - Nome da seção
-   * @param icone - Emoji para visual
-   * @param itens - Array de opções
-   * @param selecionados - Item atuais selecionados
-   * @param setSelecionados - Setter do estado
-   * @param limite - Máximo permitido
-   * @param temPreco - Se mostra preço (true apenas para turbine)
-   */
-  function SecaoSelecao({ titulo, icone, itens, selecionados, setSelecionados, limite, temPreco }) {
-    // Conta items reais selecionados (exclui "Sem X")
-    const countSelecionados = selecionados.filter((i) => i.id !== "f0" && i.id !== "cl0").length;
 
-    return (
-      <div>
-        {/* Cabeçalho: Título + Badge de limite */}
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-text-heading font-bold text-sm flex items-center gap-2">
-            {icone} {titulo}
-          </h3>
-          {/* Badge mostra X/Limite (ex: 2/3) */}
-          {limite > 0 && (
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              countSelecionados >= limite
-                ? "bg-accent/20 text-accent"
-                : "bg-border text-text-secondary"
-            }`}>
-              {countSelecionados}/{limite}
-            </span>
-          )}
-        </div>
-
-        {/* Lista de items (botões com checkbox) */}
-        <div className="flex flex-col gap-1.5">
-          {itens.map((item) => {
-            // Verifica se item está selecionado
-            const selecionado = selecionados.some((s) => s.id === item.id);
-            
-            // Verifica se atingiu limite e item não é "Sem X"
-            const atingiuLimite = countSelecionados >= limite && !selecionado && item.id !== "f0" && item.id !== "cl0";
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => toggleItem(item, selecionados, setSelecionados, limite)}
-                disabled={atingiuLimite}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm transition-all cursor-pointer ${
-                  selecionado
-                    ? "border-accent/50 bg-accent/10 text-text-heading"
-                    : atingiuLimite
-                      ? "border-border bg-bg-primary text-text-muted cursor-not-allowed opacity-50"
-                      : "border-border bg-bg-primary text-text-secondary hover:border-border-hover"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {/* Checkbox customizável com check icon */}
-                  <span className={`w-5 h-5 rounded flex items-center justify-center text-xs border ${
-                    selecionado
-                      ? "bg-accent border-accent text-white"
-                      : "border-border-hover"
-                  }`}>
-                    {selecionado && <FaCheck className="size-2.5" />}
-                  </span>
-                  {item.nome}
-                </div>
-                {/* Preço extra (se turbine) */}
-                <span className="text-text-subtle text-xs">
-                  {temPreco && item.preco > 0
-                    ? `+ ${formatarPreco(item.preco)}`
-                    : "R$ 0,00"
-                  }
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
 
   return (
     // ===== OVERLAY + MODAL CONTAINER =====

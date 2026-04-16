@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Home from "./pages/Home";
 import Admin from "./pages/Admin";
 import LoginAdmin from "./pages/LoginAdmin";
@@ -30,42 +30,15 @@ function App() {
   
   // Controla qual página está sendo exibida
   // Valores: "home", "login-admin", "admin"
-  const [paginaAtual, setPaginaAtual] = useState("home");
+  const [paginaAtual, setPaginaAtual] = useState(() => {
+    return localStorage.getItem("adminAutenticado") === "true" ? "admin" : "home";
+  });
   
   // Armazena se admin está autenticado
   // true = pode acessar painel, false = precisa fazer login
-  const [adminAutenticado, setAdminAutenticado] = useState(false);
-
-  /**
-   * useEffect: Verificar autenticação ao carregar
-   * 
-   * FUNCIONALIDADE:
-   *  - Executa uma única vez ao montar o componente
-   *  - Verifica se há sessão salva em localStorage
-   *  - Se existe: restaura estado autenticado
-   *  - Se não existe: mantém na página inicial
-   * 
-   * 🔍 DEBUGAR:
-   *  console.log("Admin autenticado ao carregar?", autenticado);
-   * 
-   * 🔐 MELHORIAS:
-   *  - Usar sessionStorage (apaga ao fechar aba)
-   *  - Implementar verificação de expiração
-   *  - Validar token JWT (se implementar em produção)
-   */
-  useEffect(() => {
-    // Verifica se localStorage tem flag de autenticação
-    const autenticado = localStorage.getItem("adminAutenticado") === "true";
-    
-    // Atualiza estado com valor salvo
-    setAdminAutenticado(autenticado);
-    
-    // Se estava autenticado, vai direto pro admin
-    // (Apenas para UX, segurança deve vir do backend)
-    if (autenticado) {
-      setPaginaAtual("admin");
-    }
-  }, []); // Array vazio = executa apenas na montagem
+  const [adminAutenticado, setAdminAutenticado] = useState(() => {
+    return localStorage.getItem("adminAutenticado") === "true";
+  });
 
   /**
    * Função: handleLoginSuccess

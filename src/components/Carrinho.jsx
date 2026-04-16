@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FaTrash, FaPlus, FaMinus, FaTimes, FaMapMarkerAlt, FaUser } from "react-icons/fa";
 import { FaWhatsapp } from "react-icons/fa";
-import { supabase } from "../lib/supabase";
+
 import { MdEmail } from "react-icons/md";
 
 /**
@@ -70,7 +70,7 @@ export default function Carrinho({ carrinho, onFechar, onAumentar, onDiminuir, o
   const [bairro, setBairro] = useState("");
   const [complemento, setComplemento] = useState("");
   const [referencia, setReferencia] = useState("");
-  const [erro, setErro] = useState("");
+
 
   // ===== CÁLCULOS =====
   // Calcula o subtotal: soma (preco * quantidade) de cada item
@@ -180,7 +180,6 @@ export default function Carrinho({ carrinho, onFechar, onAumentar, onDiminuir, o
       onExibirPagamento(true);
     } catch (error) {
       // Erro ao salvar: mostra alerta e loga no console
-      setErro(error.message);
       console.log(error.message);
       alert("Ocorreu um erro ao processar o seu pedido. Tente novamente.");
     }
