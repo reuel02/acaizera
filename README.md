@@ -31,6 +31,19 @@ Ao final do fluxo, o aplicativo compila tudo e gera uma **mensagem estruturada, 
 
 ---
 
+## 📸 Preview da Aplicação
+
+### Interface Mobile (Foco Principal)
+![Preview Mobile](public/preview.PNG)
+
+### Interface Desktop
+![Preview Desktop](public/preview-desktop.PNG)
+
+### Painel de Controle (Admin)
+![Preview Painel Admin](public/preview-painel-de-controle.PNG)
+
+---
+
 ## ✨ Funcionalidades Principais
 
 - 🟣 **Cardápio Visual e Dinâmico:** Produtos exibidos com fotos de qualidade, descrição completa e preços atualizados.
