@@ -72,4 +72,8 @@ if (!supabaseUrl || !supabaseKey) {
  * RLS Policies garantem que cada usuário só vê seus próprios dados
  * (quando configurado corretamente no painel Supabase)
  */
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  db: {
+    schema: 'acaizera'
+  }
+});

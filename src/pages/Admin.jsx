@@ -13,7 +13,7 @@ export default function Admin({ onLogout }) {
         // Inscreve o painel para ouvir mudanças no banco ao vivo
         const canalRealtime = supabase
             .channel('pedidos_ao_vivo')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, (payload) => {
+            .on('postgres_changes', { event: '*', schema: 'acaizera', table: 'pedidos' }, (payload) => {
                 console.log('Mudança recebida!', payload);
                 buscarPedidos(); // Recarrega a lista se algo mudar
             })
