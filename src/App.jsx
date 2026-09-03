@@ -1,7 +1,12 @@
 import { useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
-import Admin from "./pages/Admin";
 import LoginAdmin from "./pages/LoginAdmin";
+import AdminLayout from "./pages/AdminLayout";
+import Admin from "./pages/Admin";
+import AdminClientes from "./pages/AdminClientes";
+import AdminFinanceiro from "./pages/AdminFinanceiro";
+import AdminMetricas from "./pages/AdminMetricas";
 
 /**
  * ================================================
@@ -9,14 +14,17 @@ import LoginAdmin from "./pages/LoginAdmin";
  * ================================================
  * 
  * Componente principal da aplicação que gerencia:
- * - Roteamento entre páginas (Home, LoginAdmin, Admin)
+ * - Roteamento com react-router-dom (BrowserRouter)
  * - Estado de autenticação do admin
  * - Persistência de sessão em localStorage
  * 
- * FLUXO:
- * 1. Home (página de vendas) → Acesso a admin
- * 2. LoginAdmin (autenticação) → Validação
- * 3. Admin (painel de controle) → Gerenciar pedidos
+ * ROTAS:
+ *  /                → Home (catálogo de produtos)
+ *  /login-admin     → Tela de login do admin
+ *  /admin           → Painel (Pedidos / Kanban)
+ *  /admin/clientes  → CRM / Clientes
+ *  /admin/financeiro → Financeiro
+ *  /admin/metricas  → Métricas / Rankings
  * 
  * SEGURANÇA:
  * ⚠️ Usar sessionStorage ao invés de localStorage
@@ -27,12 +35,6 @@ import LoginAdmin from "./pages/LoginAdmin";
 
 function App() {
   // ===== ESTADOS DA APLICAÇÃO =====
-  
-  // Controla qual página está sendo exibida
-  // Valores: "home", "login-admin", "admin"
-  const [paginaAtual, setPaginaAtual] = useState(() => {
-    return localStorage.getItem("adminAutenticado") === "true" ? "admin" : "home";
-  });
   
   // Armazena se admin está autenticado
   // true = pode acessar painel, false = precisa fazer login
@@ -46,12 +48,11 @@ function App() {
    * Chamada após autenticação bem-sucedida no LoginAdmin
    * 
    * AÇÕES:
-   * 1. Move para página do painel admin
-   * 2. Marca admin como autenticado
+   * 1. Marca admin como autenticado
+   * (Navegação é feita pelo componente LoginAdmin via useNavigate)
    */
   const handleLoginSuccess = () => {
     setAdminAutenticado(true);
-    setPaginaAtual("admin");
   };
 
   /**
@@ -61,8 +62,8 @@ function App() {
    * 
    * AÇÕES:
    * 1. Remove autenticação do localStorage
-   * 2. Volta para página inicial
-   * 3. Limpa estado de autenticação
+   * 2. Limpa estado de autenticação
+   * (Navegação é feita pelo AdminLayout via useNavigate)
    * 
    * 🔐 SEGURANÇA:
    *  - Certifique-se que dados sensíveis foram removidos
@@ -75,62 +76,61 @@ function App() {
     
     // Volta ao estado não autenticado
     setAdminAutenticado(false);
-    setPaginaAtual("home");
   };
 
   /**
-   * Função: irParaAdmin
+   * Componente de guard: ProtectedRoute
    * 
-   * Gerencia acesso ao painel admin
-   * 
-   * LÓGICA:
-   * - Se NÃO autenticado: vai para tela de login
-   * - Se JÁ autenticado: vai direto para painel
-   * 
-   * CHAMADA POR:
-   * - Clique no botão de engrenagem ⚙️ na header
+   * Protege rotas que exigem autenticação de admin.
+   * Se não autenticado, redireciona para /login-admin.
    */
-  const irParaAdmin = () => {
+  const ProtectedRoute = ({ children }) => {
     if (!adminAutenticado) {
-      // Não está autenticado: mostra tela de login
-      setPaginaAtual("login-admin");
-    } else {
-      // Já está autenticado: vai direto para admin
-      setPaginaAtual("admin");
+      return <Navigate to="/login-admin" replace />;
     }
+    return children;
   };
 
   // ===== RENDER DO COMPONENTE =====
-  // Renderiza condicional baseado em paginaAtual
   return (
-    <div>
-      {/* ===== PÁGINA: HOME (Catálogo de Produtos) ===== */}
-      {paginaAtual === "home" && (
-        <Home 
-          acessarAdmin={irParaAdmin} // Passa função para abreir painel
-        />
-      )}
+    <BrowserRouter>
+      <Routes>
+        {/* ===== ROTA: HOME (Catálogo de Produtos) ===== */}
+        <Route path="/" element={<Home />} />
 
-      {/* ===== PÁGINA: LOGIN ADMIN (Autenticação) ===== */}
-      {paginaAtual === "login-admin" && (
-        <LoginAdmin 
-          onLoginSuccess={handleLoginSuccess} // Callback após login
+        {/* ===== ROTA: LOGIN ADMIN (Autenticação) ===== */}
+        <Route
+          path="/login-admin"
+          element={
+            adminAutenticado ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <LoginAdmin onLoginSuccess={handleLoginSuccess} />
+            )
+          }
         />
-      )}
 
-      {/* ===== PÁGINA: ADMIN (Painel de Controle) ===== */}
-      {/* Renderiza apenas se:
-          1. paginaAtual === "admin" E
-          2. adminAutenticado === true
-          
-          Isso previne acesso direto ao painel sem autenticação
-          */}
-      {paginaAtual === "admin" && adminAutenticado && (
-        <Admin 
-          onLogout={handleLogout} // Callback para logout
-        />
-      )}
-    </div>
+        {/* ===== ROTAS: ADMIN (Painel de Controle) ===== */}
+        {/* Protegidas por ProtectedRoute — exigem autenticação */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminLayout onLogout={handleLogout} />
+            </ProtectedRoute>
+          }
+        >
+          {/* Sub-rotas renderizadas dentro do <Outlet /> do AdminLayout */}
+          <Route index element={<Admin />} />
+          <Route path="clientes" element={<AdminClientes />} />
+          <Route path="financeiro" element={<AdminFinanceiro />} />
+          <Route path="metricas" element={<AdminMetricas />} />
+        </Route>
+
+        {/* Qualquer rota desconhecida → Home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

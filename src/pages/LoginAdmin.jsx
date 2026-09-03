@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 /**
  * ================================================
@@ -23,6 +24,8 @@ import { useState } from "react";
  */
 
 export default function LoginAdmin({ onLoginSuccess }) {
+  const navigate = useNavigate();
+
   // ===== ESTADOS DO FORMULÁRIO =====
   const [email, setEmail] = useState(""); // Email digitado pelo usuário
   const [senha, setSenha] = useState(""); // Senha digitada pelo usuário
@@ -66,6 +69,7 @@ export default function LoginAdmin({ onLoginSuccess }) {
       
       // Chama função callback passada via props
       onLoginSuccess();
+      navigate("/admin");
     } else {
       // ❌ FALHA NA AUTENTICAÇÃO
       // Exibe mensagem genérica (não revela qual campo está errado)

@@ -1,174 +1,176 @@
 import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { criarPagamentoPIX, verificarStatusPagamento } from '../services/mercadoPago';
+import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
+
+// Inicializar Mercado Pago
+initMercadoPago(import.meta.env.VITE_MERCADO_PAGO_PUBLIC_KEY, { locale: 'pt-BR' });
 
 /**
  * ================================================
  * COMPONENTE: Pagamento (Modal)
  * ================================================
- * 
- * Modal para exibir QR Code de PIX via Mercado Pago e confirmar pagamento
- * 
- * FUNCIONALIDADE:
- *  - Cria pagamento PIX via Mercado Pago
- *  - Exibe código visual (QR Code SVG)
- *  - Funcionalidade "Copiar Copia e Cola" com feedback visual
- *  - Verifica status do pagamento antes de confirmar
- *  - Botão para cancelar operação
- * 
- * PROPS:
- *  - valorTotal: number - Valor total em reais para o PIX
- *  - emailCliente: string - Email do cliente
- *  - onPagamentoFeito: (paymentId) => void - Callback ao confirmar pagamento (recebe payment_id)
- *  - onCancelar: () => void - Callback ao cancelar (voltar no carrinho)
- * 
- * ESTADOS:
- *  - dadosPagamento: object - Dados do pagamento PIX do Mercado Pago
- *  - copiado: boolean - Flag visual para feedback de cópia
- *  - statusPagamento: string - Status atual do pagamento
- *  - verificado: boolean - Se já tentou verificar o pagamento
- * 
- * DEPENDÊNCIAS:
- *  - Mercado Pago SDK configurado com ACCESS_TOKEN
- *  - Webhook configurado no Mercado Pago (opcional para notificações automáticas)
- * ================================================
  */
 
 export function Pagamento({ valorTotal, emailCliente, onPagamentoFeito, onCancelar }) {
-  // Estado para armazenar os dados do pagamento PIX
-  const [dadosPagamento, setDadosPagamento] = useState(null);
-  
-  // Flag para mostrar feedback de cópia
+  const [pixData, setPixData] = useState(null);
   const [copiado, setCopiado] = useState(false);
+  const [verificando, setVerificando] = useState(false);
 
-  // Estado para verificar status do pagamento
-  const [verificado, setVerificado] = useState(false);
+  // Configuração do Brick
+  const initialization = {
+    amount: parseFloat(valorTotal),
+  };
 
-  /**
-   * useEffect: Cria pagamento PIX quando componente monta ou valorTotal muda
-   */
-  useEffect(() => {
-    const criarPagamento = async () => {
-      try {
-        const dados = await criarPagamentoPIX(valorTotal, 'Pedido de Açaí', emailCliente);
-        setDadosPagamento(dados);
-      } catch (error) {
-        console.error('Erro ao criar pagamento PIX:', error);
-        alert('Erro ao gerar QR Code PIX. Tente novamente.');
-      }
-    };
-
-    if (valorTotal > 0) {
-      criarPagamento();
+  const customization = {
+    paymentMethods: {
+      creditCard: "all",
+      bankTransfer: "all", // Habilita PIX no Brasil
+      maxInstallments: 1, // Trava em "Apenas a vista" conforme solicitado
+    },
+    visual: {
+      style: {
+        theme: "dark", // Combina com o app
+      },
     }
-  }, [valorTotal, emailCliente]);
+  };
 
-  /**
-   * Copia o código PIX para clipboard e mostra feedback visual
-   */
+  const onSubmit = async ({ selectedPaymentMethod, formData }) => {
+    // Garantir que o e-mail do payer vá no formData
+    if (!formData.payer) formData.payer = {};
+    if (!formData.payer.email) formData.payer.email = emailCliente;
+
+    return new Promise((resolve, reject) => {
+      fetch("/api/pagamentos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.error) {
+            alert("Erro ao processar pagamento: " + data.message);
+            reject();
+            return;
+          }
+
+          if (data.status === 'approved') {
+            resolve(); // Sucesso absoluto
+            onPagamentoFeito(data.id);
+          } else if (data.qrCode) {
+            resolve(); // PIX gerado
+            setPixData(data);
+          } else if (data.status === 'in_process' || data.status === 'pending') {
+            // Pagamento em análise antifraude
+            resolve(); // Resolve pro Brick mostrar a tela dele de "Estamos analisando"
+            alert("Seu pagamento entrou em análise (pendente). O pedido NÃO foi gerado. Se o valor for debitado e aprovado posteriormente, entre em contato com a loja apresentando o comprovante.");
+          } else if (data.status === 'rejected') {
+            reject(); 
+            console.warn("Pagamento recusado:", data.status_detail);
+          } else {
+            alert(`Pagamento não aprovado. Status: ${data.status}`);
+            reject();
+          }
+        })
+        .catch((error) => {
+          console.error("Erro na requisição de pagamento", error);
+          alert("Falha de rede ao processar o pagamento.");
+          reject();
+        });
+    });
+  };
+
+  const onError = async (error) => {
+    console.error("Erro no Brick do Mercado Pago", error);
+  };
+
   const copiarPix = () => {
-    if (!dadosPagamento?.copiaCola) return;
-    
-    navigator.clipboard.writeText(dadosPagamento.copiaCola);
-    
+    if (!pixData?.copiaCola) return;
+    navigator.clipboard.writeText(pixData.copiaCola);
     setCopiado(true);
     setTimeout(() => setCopiado(false), 3000);
   };
 
-  /**
-   * Verifica o status do pagamento no Mercado Pago
-   */
-  const verificarPagamento = async () => {
-    if (!dadosPagamento?.id) return;
-
+  const verificarStatusPix = async () => {
+    if (!pixData?.id) return;
+    setVerificando(true);
     try {
-      console.log(`🔍 Verificando pagamento: ${dadosPagamento.id}`);
-      const status = await verificarStatusPagamento(dadosPagamento.id);
-      console.log(`✅ Status retornado: ${status}`);
-      setVerificado(true);
-
-      if (status === 'approved') {
-        // Pagamento confirmado, passa o payment_id para o callback
-        onPagamentoFeito(dadosPagamento.id);
+      const response = await fetch(`/api/status?id=${pixData.id}`);
+      const data = await response.json();
+      if (data.status === 'approved') {
+        onPagamentoFeito(pixData.id);
       } else {
-        alert('Pagamento ainda não foi confirmado. Aguarde alguns instantes e tente novamente.');
+        alert("O PIX ainda não foi confirmado. Aguarde mais alguns segundos e tente novamente.");
       }
     } catch (error) {
-      console.error('❌ Erro ao verificar pagamento:', error);
-      console.error('Detalhes do erro:', {
-        message: error.message,
-        status: error.status,
-        cause: error.cause,
-      });
-      alert(`Erro ao verificar pagamento: ${error.message}`);
+      alert("Erro ao verificar status.");
+    } finally {
+      setVerificando(false);
     }
   };
 
   return (
-    // Overlay preto + Modal centralizado
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      
-      {/* Container do modal com borda roxa (brand) */}
-      <div className="w-full max-w-md rounded-2xl bg-zinc-900 p-6 shadow-2xl border border-purple-500/30">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 overflow-y-auto">
+      <div className="w-full max-w-md rounded-2xl bg-zinc-900 p-6 shadow-2xl border border-purple-500/30 my-8">
         
-        {/* ===== SEÇÃO: TÍTULO ===== */}
-        <h2 className="text-xl font-bold text-white text-center mb-2">Finalizar Pagamento</h2>
-        <p className="text-zinc-400 text-sm text-center mb-6">
-          Escaneie o QR Code ou copie o código abaixo.
-        </p>
+        {/* Se gerou PIX, mostra a UI do PIX customizada, senão mostra o Brick */}
+        {pixData ? (
+          <div>
+            <h2 className="text-xl font-bold text-white text-center mb-2">Pague com PIX</h2>
+            <p className="text-zinc-400 text-sm text-center mb-6">
+              Escaneie o QR Code ou copie o código abaixo.
+            </p>
 
-        {/* ===== SEÇÃO: QR CODE ===== */}
-        {/* Container branco para destacar o QR Code */}
-        <div className="flex justify-center mb-6 p-4 bg-white rounded-xl mx-auto w-fit">
-          {/* QRCodeSVG só renderiza se houver dados de pagamento válidos */}
-          {dadosPagamento?.qrCode && (
-            <QRCodeSVG 
-              value={dadosPagamento.qrCode} 
-              size={200} 
-              level="M"
-              includeMargin={true}
+            <div className="flex justify-center mb-6 p-4 bg-white rounded-xl mx-auto w-fit">
+              <QRCodeSVG 
+                value={pixData.qrCode} 
+                size={200} 
+                level="M"
+                includeMargin={true}
+              />
+            </div>
+
+            <div className="text-center mb-6">
+              <p className="text-zinc-400 text-sm">Valor da compra</p>
+              <p className="text-3xl font-bold text-green-500">
+                R$ {Number(valorTotal || 0).toFixed(2).replace('.', ',')}
+              </p>
+            </div>
+
+            <button 
+              onClick={copiarPix}
+              className="w-full mb-4 py-3 rounded-xl font-bold bg-zinc-800 text-white border border-zinc-700 transition-all cursor-pointer"
+            >
+              {copiado ? '✓ Código Copiado!' : '📄 Copiar PIX Copia e Cola'}
+            </button>
+
+            <button 
+              onClick={verificarStatusPix}
+              disabled={verificando}
+              className="w-full mb-4 py-3 rounded-xl font-bold bg-brand-banana text-zinc-900 transition-all cursor-pointer hover:bg-yellow-400 disabled:opacity-50"
+            >
+              {verificando ? 'Verificando...' : 'Já Paguei (Verificar)'}
+            </button>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Pagamento Seguro</h2>
+              <button onClick={onCancelar} className="text-zinc-400 hover:text-white transition-colors cursor-pointer text-sm">
+                Cancelar
+              </button>
+            </div>
+            {/* O Mercado Pago Payment Brick lida com todo o formulário de Cartão/Pix */}
+            <Payment
+              initialization={initialization}
+              customization={customization}
+              onSubmit={onSubmit}
+              onError={onError}
             />
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* ===== SEÇÃO: VALOR TOTAL ===== */}
-        <div className="text-center mb-6">
-          <p className="text-zinc-400 text-sm">Valor da compra</p>
-          {/* Formata valor: substitui . por , para padrão brasileiro */}
-          <p className="text-3xl font-bold text-green-500">
-            R$ {Number(valorTotal || 0).toFixed(2).replace('.', ',')}
-          </p>
-        </div>
-
-        {/* ===== SEÇÃO: BOTÃO COPIAR ===== */}
-        {/* Button com feedback visual (muda de texto quando copiado) */}
-        <button 
-          onClick={copiarPix}
-          className="w-full mb-4 py-3 rounded-xl font-bold bg-zinc-800 text-white border border-zinc-700 transition-all"
-        >
-          {/* Mostra checkmark quando copiado, caso contrário mostra ícone de documento */}
-          {copiado ? '✓ Código Copiado!' : '📄 Copiar PIX Copia e Cola'}
-        </button>
-
-        {/* ===== SEÇÃO: BOTÕES FINAIS ===== */}
-        <div className="flex gap-2">
-          {/* Botão Voltar: cancela operação e volta ao carrinho */}
-          <button 
-            onClick={onCancelar}
-            className="w-1/3 py-3 rounded-xl font-bold bg-zinc-800 text-zinc-300"
-          >
-            Voltar
-          </button>
-          
-          {/* Botão Confirmar: verifica status do pagamento antes de enviar */}
-          <button 
-            onClick={verificarPagamento}
-            disabled={!dadosPagamento}
-            className="w-2/3 py-3 rounded-xl font-bold bg-purple-600 text-white disabled:bg-gray-600"
-          >
-            {verificado ? 'Verificando...' : 'Já Paguei → Verificar'}
-          </button>
-        </div>
       </div>
     </div>
   );

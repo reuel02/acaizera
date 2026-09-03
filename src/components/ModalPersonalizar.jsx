@@ -3,49 +3,6 @@ import { FaTimes, FaPlus, FaMinus, FaCheck } from "react-icons/fa";
 
 /**
  * ================================================
- * OPTIONS ARRAYS: Dados de personalização do açaí
- * ================================================
- */
-
-// Opções de frutas disponíveis para o açaí no copo
-const FRUTAS = [
-    { id: "f0", nome: "Sem Frutas" },
-    { id: "f1", nome: "Banana" },
-    { id: "f2", nome: "Morango" },
-    { id: "f3", nome: "Uva" },
-];
-
-// Opções de acompanhamentos crunchies para adicionar ao açaí
-const ACOMPANHAMENTOS = [
-    { id: "a1", nome: "Sucrilhos" },
-    { id: "a2", nome: "Ovomaltine" },
-    { id: "a3", nome: "Confete" },
-    { id: "a4", nome: "Chocoball" },
-    { id: "a5", nome: "Paçoca" },
-    { id: "a6", nome: "Amendoim" },
-    { id: "a7", nome: "Leite em Pó" },
-    { id: "a8", nome: "Granola" },
-];
-
-// Opções de caldas/molhos para adicionar
-const CALDAS = [
-    { id: "cl0", nome: "Sem Caldas" },
-    { id: "cl1", nome: "Leite Condensado" },
-    { id: "cl2", nome: "Calda de Morango" },
-    { id: "cl3", nome: "Calda de Caramelo" },
-    { id: "cl4", nome: "Calda de Chocolate" },
-    { id: "cl5", nome: "Mel" },
-];
-
-// Itens extras premium com custo adicional (Turbine)
-const TURBINE = [
-    { id: "t1", nome: "Kit Kat", preco: 4.00 },
-    { id: "t2", nome: "Ouro Branco", preco: 3.00 },
-    { id: "t3", nome: "Nutella", preco: 3.00 },
-];
-
-/**
- * ================================================
  * COMPONENTE: ModalPersonalizar
  * ================================================
  * 
@@ -105,7 +62,7 @@ function formatarPreco(valor) {
 function toggleItem(item, lista, setLista, limite) {
   const existe = lista.find((i) => i.id === item.id);
 
-  if (item.id === "f0" || item.id === "cl0") {
+  if (item.id === "f0" || item.id === "cl0" || item.id === "a0") {
       if (existe) {
           setLista([]);
       } else {
@@ -114,7 +71,7 @@ function toggleItem(item, lista, setLista, limite) {
       return;
   }
 
-  const listaSemVazio = lista.filter((i) => i.id !== "f0" && i.id !== "cl0");
+  const listaSemVazio = lista.filter((i) => i.id !== "f0" && i.id !== "cl0" && i.id !== "a0");
 
   if (existe) {
       setLista(listaSemVazio.filter((i) => i.id !== item.id));
@@ -127,7 +84,7 @@ function toggleItem(item, lista, setLista, limite) {
  * Componente reutilizável para seção de seleção
  */
 function SecaoSelecao({ titulo, icone, itens, selecionados, setSelecionados, limite, temPreco }) {
-  const countSelecionados = selecionados.filter((i) => i.id !== "f0" && i.id !== "cl0").length;
+  const countSelecionados = selecionados.filter((i) => i.id !== "f0" && i.id !== "cl0" && i.id !== "a0").length;
 
   return (
     <div>
@@ -135,7 +92,7 @@ function SecaoSelecao({ titulo, icone, itens, selecionados, setSelecionados, lim
         <h3 className="text-text-heading font-bold text-sm flex items-center gap-2">
           {icone} {titulo}
         </h3>
-        {limite > 0 && (
+        {limite > 0 && limite < 99 && (
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
             countSelecionados >= limite
               ? "bg-accent/20 text-accent"
@@ -149,7 +106,7 @@ function SecaoSelecao({ titulo, icone, itens, selecionados, setSelecionados, lim
       <div className="flex flex-col gap-1.5">
         {itens.map((item) => {
           const selecionado = selecionados.some((s) => s.id === item.id);
-          const atingiuLimite = countSelecionados >= limite && !selecionado && item.id !== "f0" && item.id !== "cl0";
+          const atingiuLimite = countSelecionados >= limite && !selecionado && item.id !== "f0" && item.id !== "cl0" && item.id !== "a0";
 
           return (
             <button
@@ -200,10 +157,17 @@ export default function ModalPersonalizar({ produto, onConfirmar, onFechar }) {
   // ===== LÓGICA: Verifica tipo de açaí para habilitar personalização =====
   // "açai no copo" permite editar (frutas, acompanhamentos, caldas, turbine)
   // "açai na garrafa" é pré-pronto, apenas seleciona quantidade
-  const isCopoAcai = produto.tipo === "açai no copo";
+  const isCopoAcai = produto.tipo === "açai no copo" || produto.tipo === "acai";
   
   // Busca limites de seleção (máximo items por categoria) do produto
   const limites = produto.limites || { frutas: 0, acompanhamentos: 0, caldas: 0 };
+  
+  // Busca opções de complementos dinamicamente do banco de dados (coluna opcoes)
+  const opcoes = produto.opcoes || {};
+  const arrayFrutas = opcoes.frutas || [];
+  const arrayAcompanhamentos = opcoes.acompanhamentos || [];
+  const arrayCaldas = opcoes.caldas || [];
+  const arrayTurbine = opcoes.turbine || [];
 
   // ===== CÁLCULO DE PREÇO =====
   // Calcula soma dos preços dos turbines selecionados
@@ -302,46 +266,41 @@ export default function ModalPersonalizar({ produto, onConfirmar, onFechar }) {
             <>
               {/* ===== AÇAÍ NO COPO: Com personalização ===== */}
 
-              {/* Seção: Frutas */}
               <SecaoSelecao
-                titulo="Escolha sua Fruta!"
+                titulo="Frutas"
                 icone="🍓"
-                itens={FRUTAS}
+                itens={arrayFrutas}
                 selecionados={frutasSelecionadas}
                 setSelecionados={setFrutasSelecionadas}
                 limite={limites.frutas}
                 temPreco={false}
               />
-
-              {/* Seção: Acompanhamentos */}
+              
               <SecaoSelecao
-                titulo="Escolha seus Acompanhamentos!"
+                titulo="Crunchies e Acompanhamentos"
                 icone="🥣"
-                itens={ACOMPANHAMENTOS}
+                itens={arrayAcompanhamentos}
                 selecionados={acompanhamentosSelecionados}
                 setSelecionados={setAcompanhamentosSelecionados}
                 limite={limites.acompanhamentos}
                 temPreco={false}
               />
-
-              {/* Seção: Caldas */}
+              
               <SecaoSelecao
-                titulo="Escolha sua Calda!"
+                titulo="Caldas"
                 icone="🍯"
-                itens={CALDAS}
+                itens={arrayCaldas}
                 selecionados={caldasSelecionadas}
                 setSelecionados={setCaldasSelecionadas}
                 limite={limites.caldas}
                 temPreco={false}
               />
-
-              {/* ===== SEÇÃO: TURBINE (EXTRAS COM CUSTO) ===== */}
               <div>
                 <h3 className="text-text-heading font-bold text-sm mb-2 flex items-center gap-2">
                   ⚡ Turbine seu Açaí!
                 </h3>
                 <div className="flex flex-col gap-1.5">
-                  {TURBINE.map((item) => {
+                  {arrayTurbine.map((item) => {
                     const selecionado = turbineSelecionados.some((s) => s.id === item.id);
                     return (
                       <button

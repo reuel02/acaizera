@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import Header from "../components/Header"
 import CardCatalogo from "../components/CardCatalogo"
 import Carrinho from "../components/Carrinho"
@@ -61,7 +62,9 @@ import { Pagamento } from "../components/Pagamento";
  * ================================================
  */
 
-export default function Home({ acessarAdmin }) {
+export default function Home() {
+  const navigate = useNavigate();
+
   // ===== ESTADOS DE CARREGAMENTO =====
   const [produtos, setProdutos] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -192,6 +195,8 @@ export default function Home({ acessarAdmin }) {
     }
   };
 
+  const [pagamentoAprovado, setPagamentoAprovado] = useState(false);
+
   /**
    * Confirma o pagamento e salva o pedido no banco
    * @param {string} paymentId - ID do pagamento Mercado Pago (enviado pelo webhook)
@@ -207,6 +212,7 @@ export default function Home({ acessarAdmin }) {
           cliente_nome: dadosPedidoSalvo.cliente_nome,
           cliente_endereco: dadosPedidoSalvo.cliente_endereco,
           cliente_email: dadosPedidoSalvo.cliente_email,
+          cliente_telefone: dadosPedidoSalvo.cliente_telefone || '',
           total: dadosPedidoSalvo.total,
           itens: dadosPedidoSalvo.itens,
           payment_id: paymentId,
@@ -216,8 +222,13 @@ export default function Home({ acessarAdmin }) {
 
       if (error) throw error;
 
-      // Agora envia pro WhatsApp
-      concluirEIrParaWhatsApp();
+      // Exibe feedback visual de sucesso
+      setPagamentoAprovado(true);
+
+      // Redireciona para o WhatsApp após 3 segundos
+      setTimeout(() => {
+        concluirEIrParaWhatsApp();
+      }, 3000);
     } catch (error) {
       alert("Erro ao confirmar pagamento. Tente novamente.");
       console.error(error);
@@ -226,9 +237,6 @@ export default function Home({ acessarAdmin }) {
 
   /**
    * Finaliza o pedido: abre WhatsApp e limpa carrinho
-   * 
-   * TODO: Usar a mensagem gerada no Carrinho.jsx para enviar ao WhatsApp real
-   * TODO: Implementar confirmação de entrega no servidor
    */
   const concluirEIrParaWhatsApp = () => {
     if (!dadosPedidoSalvo) return;
@@ -240,11 +248,12 @@ export default function Home({ acessarAdmin }) {
     const fone = import.meta.env.VITE_OWNER_WHATSAPP; // Telefone do dono da loja
     const link = `https://wa.me/${fone}?text=${encodeURIComponent(mensagem)}`;
     
-    // Abre WhatsApp em nova aba
-    window.open(link, '_blank');
+    // Altera a URL atual em vez de abrir nova aba para evitar bloqueador de pop-ups (já que está num setTimeout)
+    window.location.href = link;
     
-    // Fecha modal de pagamento
+    // Fecha modal de pagamento e reseta sucesso
     setExibirPagamento(false);
+    setPagamentoAprovado(false);
     
     // Limpa carrinho após envio
     setCarrinho([]);
@@ -300,7 +309,7 @@ export default function Home({ acessarAdmin }) {
       <Header 
         quantidadeCarrinho={quantidadeTotalCarrinho} 
         onOpenCart={() => setIsCartOpen(true)} 
-        onAcessarAdmin={acessarAdmin} 
+        onAcessarAdmin={() => navigate("/login-admin")} 
       />
 
       {/* ===== CONTEÚDO PRINCIPAL ===== */}
@@ -387,8 +396,31 @@ export default function Home({ acessarAdmin }) {
         />
       )}
 
-      {/* ===== MODAL: PAGAMENTO (PIX) ===== */}
-      {exibirPagamento && dadosPedidoSalvo && (
+      {/* ===== MODAL: PAGAMENTO APROVADO ===== */}
+      {pagamentoAprovado && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4">
+          <div className="bg-zinc-900 rounded-3xl p-8 flex flex-col items-center justify-center max-w-sm w-full border border-green-500/30 shadow-[0_0_50px_rgba(34,197,94,0.2)] animate-in fade-in zoom-in duration-300">
+            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(34,197,94,0.5)]">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-white text-center mb-2">Pagamento Aprovado!</h2>
+            <p className="text-zinc-400 text-center mb-6">
+              Seu pedido foi salvo com sucesso.
+            </p>
+            <div className="flex flex-col items-center gap-3 w-full">
+              <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-sm text-green-500 font-semibold animate-pulse text-center">
+                Redirecionando para o WhatsApp...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MODAL: PAGAMENTO (PIX / Cartão) ===== */}
+      {exibirPagamento && dadosPedidoSalvo && !pagamentoAprovado && (
         <Pagamento 
           valorTotal={dadosPedidoSalvo.subtotal}
           emailCliente={dadosPedidoSalvo.cliente_email}
