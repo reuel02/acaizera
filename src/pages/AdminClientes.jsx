@@ -73,6 +73,26 @@ export default function AdminClientes() {
     });
   };
 
+  // Formatar telefone: 13997385581 -> (13) 99738-5581
+  const formatarTelefone = (tel) => {
+    if (!tel) return "Não informado";
+    // Remove tudo que não é dígito
+    const digitos = tel.replace(/\D/g, '');
+    
+    if (digitos.length === 11) {
+      // Celular com DDD: (XX) XXXXX-XXXX
+      return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`;
+    } else if (digitos.length === 10) {
+      // Fixo com DDD: (XX) XXXX-XXXX
+      return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 6)}-${digitos.slice(6)}`;
+    } else if (digitos.length === 13 && digitos.startsWith('55')) {
+      // Com código do país +55: (XX) XXXXX-XXXX
+      return `(${digitos.slice(2, 4)}) ${digitos.slice(4, 9)}-${digitos.slice(9)}`;
+    }
+    // Se não se encaixa, retorna como está
+    return tel;
+  };
+
   if (carregando) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -154,7 +174,7 @@ export default function AdminClientes() {
                 <span className="md:hidden text-zinc-500 text-xs font-semibold mr-2">
                   Tel:
                 </span>
-                {cliente.cliente_telefone || "Não informado"}
+                {formatarTelefone(cliente.cliente_telefone)}
               </div>
 
               {/* Total Pedidos */}

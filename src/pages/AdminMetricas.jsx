@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
-import { FaTrophy, FaStar } from "react-icons/fa";
+import { FaTrophy, FaStar, FaEdit, FaSave, FaTimes } from "react-icons/fa";
+import Toast from "../components/Toast";
 import {
   BarChart,
   Bar,
@@ -55,6 +56,18 @@ export default function AdminMetricas() {
   const [produtos, setProdutos] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [periodo, setPeriodo] = useState(30);
+
+  // Estado de edição de custo
+  const [editandoId, setEditandoId] = useState(null);
+  const [custoEditando, setCustoEditando] = useState("");
+  const [salvandoCusto, setSalvandoCusto] = useState(false);
+
+  // Toast
+  const [toast, setToast] = useState({ visivel: false, mensagem: "", tipo: "sucesso" });
+
+  const mostrarToast = (mensagem, tipo = "sucesso") => {
+    setToast({ visivel: true, mensagem, tipo });
+  };
 
   const buscarDados = useCallback(async () => {
     try {
@@ -139,6 +152,74 @@ export default function AdminMetricas() {
     };
   });
 
+  /**
+   * Converte string formatada em R$ para número
+   * Ex: "R$ 5,50" -> 5.5 | "3.50" -> 3.5 | "4,75" -> 4.75
+   */
+  const parseMoeda = (valor) => {
+    if (typeof valor === 'number') return valor;
+    let limpo = String(valor)
+      .replace(/R\$\s?/g, '')
+      .trim();
+    
+    // Se tem vírgula, trata como separador decimal brasileiro
+    if (limpo.includes(',')) {
+      limpo = limpo.replace(/\./g, ''); // remove pontos de milhar
+      limpo = limpo.replace(',', '.');  // troca vírgula decimal por ponto
+    }
+    // Se só tem ponto, mantém como decimal (formato inglês)
+    
+    const resultado = parseFloat(limpo);
+    return isNaN(resultado) ? 0 : resultado;
+  };
+
+  const iniciarEdicaoCusto = (produto) => {
+    setEditandoId(produto.id);
+    setCustoEditando(
+      produto.cost_price
+        ? String(produto.cost_price).replace('.', ',')
+        : ''
+    );
+  };
+
+  const cancelarEdicao = () => {
+    setEditandoId(null);
+    setCustoEditando("");
+  };
+
+  const salvarCusto = async (produtoId) => {
+    const valorNumerico = parseMoeda(custoEditando);
+    if (isNaN(valorNumerico) || valorNumerico <= 0) {
+      mostrarToast("Informe um valor válido maior que zero. Ex: 5,50", "erro");
+      return;
+    }
+
+    setSalvandoCusto(true);
+    try {
+      const { error, data: updated } = await supabase
+        .from('produtos')
+        .update({ cost_price: valorNumerico })
+        .eq('id', produtoId)
+        .select();
+
+      if (error) throw error;
+
+      // Atualiza o estado local imediatamente para feedback visual instantâneo
+      setProdutos(prev => prev.map(p => 
+        p.id === produtoId ? { ...p, cost_price: valorNumerico } : p
+      ));
+
+      mostrarToast(`Custo atualizado para ${formatarMoeda(valorNumerico)}!`);
+      setEditandoId(null);
+      setCustoEditando("");
+    } catch (erro) {
+      console.error("Erro ao salvar custo:", erro);
+      mostrarToast("Erro ao salvar custo do produto.", "erro");
+    } finally {
+      setSalvandoCusto(false);
+    }
+  };
+
   const periodos = [
     { valor: 7, label: "7 dias" },
     { valor: 30, label: "30 dias" },
@@ -159,6 +240,12 @@ export default function AdminMetricas() {
 
   return (
     <div>
+      <Toast
+        mensagem={toast.mensagem}
+        tipo={toast.tipo}
+        visivel={toast.visivel}
+        onFechar={() => setToast(t => ({ ...t, visivel: false }))}
+      />
       {/* Título + Filtro de período */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <h1 className="text-3xl font-bold text-white">Métricas</h1>
@@ -283,7 +370,13 @@ export default function AdminMetricas() {
             <p className="text-zinc-500 text-center py-10 text-sm">Sem dados</p>
           ) : (
             <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-1">
-              {lucroPorProduto.map((p, idx) => (
+              {lucroPorProduto.map((p, idx) => {
+                const prodOriginal = produtos.find(
+                  (pr) => pr.nome?.toLowerCase() === p.nome?.toLowerCase()
+                );
+                const isEditando = editandoId === prodOriginal?.id;
+
+                return (
                 <div
                   key={idx}
                   className="flex items-center justify-between bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-3 hover:border-zinc-600 transition-colors"
@@ -294,29 +387,84 @@ export default function AdminMetricas() {
                     </p>
                     <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500">
                       <span>Vendido: {p.quantidade}x</span>
-                      <span>Custo: {formatarMoeda(p.costPrice)}</span>
+                      {isEditando ? (
+                        <span className="flex items-center gap-1">
+                          Custo:
+                          <input
+                            type="text"
+                            value={custoEditando}
+                            onChange={(e) => setCustoEditando(e.target.value)}
+                            placeholder="Ex: 5,50"
+                            className="w-20 bg-zinc-700 border border-zinc-600 rounded-md px-2 py-0.5 text-white text-xs focus:outline-none focus:border-purple-500 transition-colors"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') salvarCusto(prodOriginal.id);
+                              if (e.key === 'Escape') cancelarEdicao();
+                            }}
+                          />
+                        </span>
+                      ) : (
+                        <span>Custo: {formatarMoeda(p.costPrice)}</span>
+                      )}
                       <span>Venda: {formatarMoeda(p.precoVenda)}</span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-zinc-500">Lucro/un</p>
-                    <p
-                      className={`text-sm font-bold ${
-                        p.lucroPorUnidade >= 0 ? "text-green-400" : "text-red-400"
-                      }`}
-                    >
-                      {formatarMoeda(p.lucroPorUnidade)}
-                    </p>
-                    <p
-                      className={`text-xs font-semibold ${
-                        p.lucroTotal >= 0 ? "text-green-400/70" : "text-red-400/70"
-                      }`}
-                    >
-                      Total: {formatarMoeda(p.lucroTotal)}
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <p className="text-xs text-zinc-500">Lucro/un</p>
+                      <p
+                        className={`text-sm font-bold ${
+                          p.lucroPorUnidade >= 0 ? "text-green-400" : "text-red-400"
+                        }`}
+                      >
+                        {formatarMoeda(p.lucroPorUnidade)}
+                      </p>
+                      <p
+                        className={`text-xs font-semibold ${
+                          p.lucroTotal >= 0 ? "text-green-400/70" : "text-red-400/70"
+                        }`}
+                      >
+                        Total: {formatarMoeda(p.lucroTotal)}
+                      </p>
+                    </div>
+                    {isEditando ? (
+                      <div className="flex flex-col gap-1 ml-2">
+                        <button
+                          onClick={() => salvarCusto(prodOriginal.id)}
+                          disabled={salvandoCusto}
+                          className="text-green-400 hover:text-green-300 disabled:opacity-50 transition-colors cursor-pointer"
+                          title="Salvar"
+                        >
+                          {salvandoCusto ? (
+                            <div className="w-3.5 h-3.5 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin" />
+                          ) : (
+                            <FaSave className="size-3.5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={cancelarEdicao}
+                          disabled={salvandoCusto}
+                          className="text-zinc-400 hover:text-red-400 disabled:opacity-50 transition-colors cursor-pointer"
+                          title="Cancelar"
+                        >
+                          <FaTimes className="size-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      prodOriginal && (
+                        <button
+                          onClick={() => iniciarEdicaoCusto(prodOriginal)}
+                          className="text-zinc-600 hover:text-purple-400 transition-colors cursor-pointer ml-2"
+                          title="Editar custo"
+                        >
+                          <FaEdit className="size-3.5" />
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

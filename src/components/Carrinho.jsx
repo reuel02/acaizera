@@ -38,9 +38,8 @@ export default function Carrinho({ carrinho, onFechar, onAumentar, onDiminuir, o
 
   // ===== VALIDAÇÃO DO FORMULÁRIO =====
   const enderecoValido = orderType === 'local' || (rua.trim() && numero.trim() && bairro.trim());
-  const emailValido = orderType === 'local' || email.trim().includes('@');
   const mesaValida = orderType === 'delivery' || mesa.trim();
-  const podeFinalizar = carrinho.length > 0 && nome.trim() && telefone.trim() && enderecoValido && emailValido && mesaValida && !loading;
+  const podeFinalizar = carrinho.length > 0 && nome.trim() && telefone.trim() && enderecoValido && mesaValida && !loading;
 
   async function finalizarPedido() {
     try {
@@ -64,7 +63,7 @@ export default function Carrinho({ carrinho, onFechar, onAumentar, onDiminuir, o
           (referencia.trim() ? `\nRef: ${referencia.trim()}` : "");
 
         novoPedido.cliente_endereco = enderecoFormatado;
-        novoPedido.cliente_email = email;
+        novoPedido.cliente_email = '';
 
         const linhas = carrinho.map((item) => {
           let linha = `${item.quantidade}x ${item.nome} — ${formatarPreco(item.preco * item.quantidade)}`;
@@ -215,12 +214,6 @@ export default function Carrinho({ carrinho, onFechar, onAumentar, onDiminuir, o
 
             {orderType === "delivery" && (
               <>
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="email" className="text-text-secondary font-semibold text-sm flex items-center gap-2">
-                    <MdEmail className="text-accent" /> Seu email
-                  </label>
-                  <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu.email@exemplo.com" className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-text-heading text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all" />
-                </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-text-secondary font-semibold text-sm flex items-center gap-2">
                     <FaMapMarkerAlt className="text-accent" /> Endereço de entrega
