@@ -7,6 +7,8 @@ import Admin from "./pages/Admin";
 import AdminClientes from "./pages/AdminClientes";
 import AdminFinanceiro from "./pages/AdminFinanceiro";
 import AdminMetricas from "./pages/AdminMetricas";
+import AdminProdutos from "./pages/AdminProdutos";
+import AdminConfiguracoes from "./pages/AdminConfiguracoes";
 
 /**
  * ================================================
@@ -125,6 +127,8 @@ function App() {
           <Route path="clientes" element={<AdminClientes />} />
           <Route path="financeiro" element={<AdminFinanceiro />} />
           <Route path="metricas" element={<AdminMetricas />} />
+          <Route path="produtos" element={<AdminProdutos />} />
+          <Route path="configuracoes" element={<AdminConfiguracoes />} />
         </Route>
 
         {/* Qualquer rota desconhecida → Home */}

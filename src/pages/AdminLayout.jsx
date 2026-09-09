@@ -8,6 +8,8 @@ import {
   FaSignOutAlt,
   FaBars,
   FaTimes,
+  FaBox,
+  FaCog,
 } from "react-icons/fa";
 
 /**
@@ -23,10 +25,12 @@ import {
  *  - onLogout: () => void - Callback para sair do painel
  *
  * ROTAS DA SIDEBAR:
- *  - /admin           → Pedidos (Kanban)
- *  - /admin/clientes  → CRM / Clientes
- *  - /admin/financeiro → Financeiro
- *  - /admin/metricas  → Métricas / Rankings
+ *  - /admin              → Pedidos (Kanban)
+ *  - /admin/clientes     → CRM / Clientes
+ *  - /admin/financeiro   → Financeiro
+ *  - /admin/metricas     → Métricas / Rankings
+ *  - /admin/produtos     → CRUD de Produtos
+ *  - /admin/configuracoes → Configurações da Loja
  * ================================================
  */
 
@@ -35,6 +39,8 @@ const menuItems = [
   { path: "/admin/clientes", label: "Clientes", icon: FaUsers },
   { path: "/admin/financeiro", label: "Financeiro", icon: FaChartLine },
   { path: "/admin/metricas", label: "Métricas", icon: FaChartBar },
+  { path: "/admin/produtos", label: "Produtos", icon: FaBox },
+  { path: "/admin/configuracoes", label: "Configurações", icon: FaCog },
 ];
 
 export default function AdminLayout({ onLogout }) {

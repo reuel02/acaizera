@@ -16,49 +16,14 @@ import { Pagamento } from "../components/Pagamento";
  * 
  * FUNCIONALIDADE:
  *  1. Carrega lista de produtos do Supabase na inicialização
- *  2. Exibe Header com logo, botão admin, carrinho
- *  3. Mostra banner de status da loja (aberto/fechado por horário)
- *  4. Filtros por tipo de produto (todos, açaí no copo, açaí na garrafa)
+ *  2. Carrega horários de funcionamento de store_settings
+ *  3. Exibe Header com logo, botão admin, carrinho
+ *  4. Mostra banner de status da loja (aberto/fechado por horário real)
  *  5. Grade de produtos com cards clicáveis
  *  6. Modal de personalização para açaí no copo
  *  7. Drawer do carrinho com endereço + pagamento
  *  8. Modal PIX para finalizar pedido
- * 
- * PROPS:
- *  - acessarAdmin: () => void - Callback para botão admin (da App.jsx)
- * 
- * ESTADOS:
- *  - produtos: array - Lista de produtos do Supabase
- *  - carregando: boolean - Flag durante fetch inicial
- *  - erro: string - Mensagem de erro (se houver)
- *  - carrinho: array - Items adicionados (com chavePersonalizacao única)
- *  - isCartOpen: boolean - Drawer do carrinho visível?
- *  - produtoPersonalizando: object|null - Produto sendo customizado
- *  - exibirPagamento: boolean - Modal PIX visível?
- *  - dadosPedidoSalvo: object|null - Dados do pedido salvo (para PIX)
- *  - filtroAtivo: string - Filtro selecionado (todos/copo/garrafa)
- * 
- * LÓGICA PRINCIPAL:
- *  1. abrirPersonalizacao(): Abre modal ao clicar "Adicionar +"
- *  2. confirmarPersonalizacao(): Gera chavePersonalizacao única
- *  3. Se item com mesma chave existe: soma quantidade
- *  4. Se novo: adiciona ao carrinho
- *  5. aumentarQuantidade/diminuirQuantidade/removerItem: Gerencia carrinho
- *  6. buscarProdutos(): Fetch de produtos do Supabase
- *  7. concluirEIrParaWhatsApp(): Abre link de WhatsApp com mensagem
- * 
- * DADOS SALVOS NO SUPABASE:
- *  - Tabela 'produtos' traz: id, nome, tipo, preco, imagem, descricao, limites
- *  - Ordem por ID: 300ml < 400ml < 500ml < ...(garrafa)
- * 
- * HORÁRIO DE FUNCIONAMENTO:
- *  - Configurado: 19h (19:00) às 0h (00:00)
- *  - ⚠️ Verificação básica, sem fuso horário configurado
- * 
- * SECURITY NOTES:
- *  - ⚠️ Telefone WhatsApp hardcoded (deve ir para env vars)
- *  - 🔐 Supabase RLS policies devem estar ativas
- *  - 💡 TODO: Implementar verificação de horário no servidor
+ *  9. Bloqueio de carrinho/personalização quando loja fechada
  * ================================================
  */
 
@@ -79,14 +44,17 @@ export default function Home() {
   const [exibirPagamento, setExibirPagamento] = useState(false);
   const [dadosPedidoSalvo, setDadosPedidoSalvo] = useState(null);
 
-  // ===== FILTROS =====
-  const [filtroAtivo, setFiltroAtivo] = useState("todos");
+  // ===== HORÁRIO DE FUNCIONAMENTO (store_settings) =====
+  const [lojaAberta, setLojaAberta] = useState(true);
+  const [horarioTexto, setHorarioTexto] = useState("");
 
   /**
    * Abre o modal de personalização ao usuário clicar em "Adicionar +"
+   * Bloqueado quando a loja está fechada.
    * @param produto - Produto a personalizar
    */
   function abrirPersonalizacao(produto) {
+    if (!lojaAberta) return; // Bloqueia quando fechado
     setProdutoPersonalizando(produto);
   }
 
@@ -260,36 +228,66 @@ export default function Home() {
   };
 
   /**
-   * useEffect: Executa buscarProdutos() ao montar componente
+   * useEffect: Executa buscarProdutos() e buscarHorarios() ao montar componente
    */
   useEffect(() => {
     buscarProdutos();
+    buscarHorarios();
   }, []);
+
+  /**
+   * Busca horários de store_settings e verifica se a loja está aberta agora
+   */
+  const buscarHorarios = async () => {
+    try {
+      const agora = new Date();
+      const diaSemana = agora.getDay(); // 0=Dom, 1=Seg, ...
+
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('*')
+        .eq('dia_semana', diaSemana)
+        .single();
+
+      if (error || !data) {
+        // Se não encontrou configuração, assume aberto
+        setLojaAberta(true);
+        setHorarioTexto("Horário não configurado");
+        return;
+      }
+
+      // Se o dia está marcado como fechado
+      if (!data.aberto) {
+        setLojaAberta(false);
+        setHorarioTexto("Fechado hoje");
+        return;
+      }
+
+      // Verificar hora atual vs hora_abertura e hora_fechamento
+      const horaAtualStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const abertura = data.hora_abertura?.slice(0, 5) || "19:00";
+      const fechamento = data.hora_fechamento?.slice(0, 5) || "00:00";
+
+      let aberto = false;
+      if (fechamento <= abertura) {
+        // Horário cruza meia-noite (ex: 19:00 - 00:00)
+        aberto = horaAtualStr >= abertura || horaAtualStr < fechamento;
+      } else {
+        // Horário no mesmo dia (ex: 08:00 - 18:00)
+        aberto = horaAtualStr >= abertura && horaAtualStr < fechamento;
+      }
+
+      setLojaAberta(aberto);
+      setHorarioTexto(`${abertura.replace(':', 'h')} às ${fechamento === '00:00' ? '00h' : fechamento.replace(':', 'h')}`);
+    } catch (erro) {
+      console.error('Erro ao buscar horários:', erro);
+      setLojaAberta(true); // Em caso de erro, não bloqueia
+    }
+  };
 
   // ===== CÁLCULOS BASEADOS EM ESTADO =====
   // Soma quantidade total de todos os items do carrinho (para badge no Header)
   const quantidadeTotalCarrinho = carrinho.reduce((total, item) => total + item.quantidade, 0);
-
-  // Filtra produtos com base no tipo selecionado
-  const produtosFiltrados = filtroAtivo === "todos"
-    ? produtos
-    : produtos.filter((p) => p.tipo === filtroAtivo);
-
-  // Opções de filtro disponíveis
-  const filtros = [
-    { valor: "todos", label: "Todos" },
-    { valor: "açai no copo", label: "Açai no copo" },
-    { valor: "açai na garrafa", label: "Açai na garrafa" },
-  ];
-
-  // ===== VERIFICAÇÃO DE HORÁRIO =====
-  // ⚠️ Verificação básica do horário (sem timezone)
-  // Configurado: aberta de 19h às 23h59m (até meia-noite do dia seguinte)
-  const horaAtual = new Date().getHours();
-  const horaAbertura = 19;
-  const horaFechamento = 0; // Meia-noite (início do dia seguinte)
-  // Usa OR (||) porque o fechamento é no dia seguinte (0h é menor que 19h)
-  const lojaAberta = horaAtual >= horaAbertura || horaAtual < horaFechamento;
 
   // ===== RENDERIZAÇÃO CONDICIONAL: CARREGANDO =====
   if (carregando) {
@@ -336,36 +334,20 @@ export default function Home() {
           </div>
           {/* Horário de funcionamento */}
           <span className="text-zinc-400 text-xs font-semibold">
-            🕐 Seg a Dom • {horaAbertura}h às {horaFechamento}0h
+            🕐 {horarioTexto || "Carregando..."}
           </span>
-        </div>
-
-        {/* ===== BARRA DE FILTROS ===== */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {filtros.map((f) => (
-            <button
-              key={f.valor}
-              onClick={() => setFiltroAtivo(f.valor)}
-              className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all cursor-pointer border
-                ${filtroAtivo === f.valor
-                  ? "bg-accent text-white border-accent shadow-md shadow-accent-shadow"
-                  : "bg-bg-secondary text-text-secondary border-border hover:border-border-hover hover:text-text-heading"
-                }`}
-            >
-              {f.label}
-            </button>
-          ))}
         </div>
 
         {/* ===== MENSAGEM DE ERRO (se houver) ===== */}
         {erro && <p className="text-red-500 font-bold">{erro}</p>}
 
         {/* ===== GRADE DE PRODUTOS ===== */}
-        {produtosFiltrados.map((produto) => (
+        {produtos.map((produto) => (
           <CardCatalogo
             key={produto.id}
             produto={produto}
             onAdicionar={() => abrirPersonalizacao(produto)}
+            disabled={!lojaAberta}
           />
         ))}
       </main>

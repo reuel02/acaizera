@@ -19,7 +19,7 @@
  * ================================================
  */
 
-export default function CardCatalogo({ produto, onAdicionar }) {
+export default function CardCatalogo({ produto, onAdicionar, disabled = false }) {
   // Validação: se produto não foi passado, não renderiza nada
   if (!produto) return null;
 
@@ -50,8 +50,13 @@ export default function CardCatalogo({ produto, onAdicionar }) {
         
         {/* Botão para adicionar ao carrinho (abre modal de personalização) */}
         <button
-          onClick={onAdicionar}
-          className="bg-accent p-2 text-xs font-bold rounded-xl text-white hover:bg-accent-hover cursor-pointer transition-colors shadow-md shadow-accent-shadow"
+          onClick={disabled ? undefined : onAdicionar}
+          disabled={disabled}
+          className={`bg-accent p-2 text-xs font-bold rounded-xl text-white transition-colors shadow-md shadow-accent-shadow ${
+            disabled
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:bg-accent-hover cursor-pointer"
+          }`}
         >
           Adicionar +
         </button>

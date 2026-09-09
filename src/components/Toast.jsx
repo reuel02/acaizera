@@ -29,6 +29,8 @@ export default function Toast({ mensagem, tipo = "sucesso", visivel, onFechar, d
       }, duracao);
 
       return () => clearTimeout(timer);
+    } else {
+      setSaindo(false); // Remove o estado de saída quando forçado a fechar de fora
     }
   }, [visivel, duracao, onFechar]);
 
@@ -48,7 +50,7 @@ export default function Toast({ mensagem, tipo = "sucesso", visivel, onFechar, d
     <div
       className={`fixed top-6 right-6 z-[200] flex items-center gap-3 px-5 py-3 rounded-xl border shadow-2xl backdrop-blur-md transition-all duration-300
         ${cores[tipo]}
-        ${saindo ? "opacity-0 translate-x-8" : "opacity-100 translate-x-0"}
+        ${saindo ? "opacity-0 translate-x-8 pointer-events-none" : "opacity-100 translate-x-0 pointer-events-auto"}
       `}
       style={{ animation: !saindo ? "toast-in 0.3s ease-out" : undefined }}
     >
